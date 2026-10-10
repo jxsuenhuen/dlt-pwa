@@ -88,16 +88,17 @@ async function init(){
 
 
   draws=draws
-  .map(d=>({
+.map(d=>({
     issue:String(d.issue||''),
     date:d.date||'',
-    front:d.front.map(Number),
-    back:d.back.map(Number)
-  }))
-  .sort(
+    front:Array.isArray(d.front)?d.front.map(Number):[],
+    back:Array.isArray(d.back)?d.back.map(Number):[]
+}))
+.filter(d=>d.front.length===5 && d.back.length===2)
+.sort(
     (a,b)=>
-    b.issue.localeCompare(a.issue)
-  );
+    Number(b.issue)-Number(a.issue)
+);
 
 
   localStorage.setItem(
@@ -204,9 +205,7 @@ function renderOverview(){
     draws.length.toLocaleString('zh-CN');
 
 
-  const latest=[...draws]
-  .filter(d=>String(d.issue||'').trim())
-  .sort((a,b)=>Number(b.issue)-Number(a.issue))[0] || draws[0];
+  const latest = draws[0];
 
 
   $('#latestDate').textContent=
