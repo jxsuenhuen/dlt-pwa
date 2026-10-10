@@ -1,7 +1,16 @@
 {
-  "issue": "",
-  "front": [],
-  "back": [],
-  "date": "",
-  "source": "auto-update"
+  "issue": "26115",
+  "front": [
+    12,
+    20,
+    32,
+    33,
+    35
+  ],
+  "back": [
+    6,
+    7
+  ],
+  "date": "2026-10-10",
+  "source": "江苏体彩"
 }
