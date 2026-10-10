@@ -44,19 +44,22 @@ async function init(){
       "data/latest.json?t="+Date.now()
     );
 
-    const latest=await r.json();
-
-
     if(latest && latest.issue){
 
-      draws=[
-        latest,
+    const newLatest={
+        issue:String(latest.issue),
+        date:latest.date || '',
+        front:latest.front.map(Number),
+        back:latest.back.map(Number)
+    };
+
+    draws=[
+        newLatest,
         ...draws.filter(
           d=>String(d.issue)!==String(latest.issue)
         )
-      ];
-
-    }
+    ];
+}
 
   }catch(e){
     console.log("latest.json读取失败",e);
