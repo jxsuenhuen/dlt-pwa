@@ -210,7 +210,7 @@ function renderOverview(){
 
   $('#latestDate').textContent=
     latest
-    ? `第 ${String(latest.issue).replace(/[^0-9]/g,'')} 期`
+   `第 ${latest.issue} 期`
     : '尚无记录';
 
 
