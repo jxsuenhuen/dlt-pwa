@@ -5,7 +5,8 @@ let draws=[], scheduleExceptions=[], calendarMonth=new Date(new Date().getFullYe
 const fmt=n=>String(n).padStart(2,'0');
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function init(){
-  try{draws=JSON.parse(localStorage.getItem(STORE))}catch{}
+  try{draws=[];
+localStorage.removeItem(STORE);)}catch{}
   if(!Array.isArray(draws)){try{const r=await fetch('./fetch("data/latest.json")');draws=await r.json()}catch{draws=[]}localStorage.setItem(STORE,JSON.stringify(draws))}
   try{const savedExceptions=JSON.parse(localStorage.getItem(SCHEDULE_STORE));scheduleExceptions=Array.isArray(savedExceptions)?savedExceptions:[]}catch{scheduleExceptions=[]}
   draws=draws.map(d=>({issue:String(d.issue||''),date:d.date||'',front:d.front.map(Number),back:d.back.map(Number)})).sort((a,b)=>b.issue.localeCompare(a.issue));
