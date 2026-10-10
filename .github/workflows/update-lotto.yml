@@ -1,0 +1,31 @@
+name: Update Lotto Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 14 * * *"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Update Lotto
+        run: |
+          python scripts/update_lotto.py
+
+      - name: Commit data
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add data/latest.json
+          git commit -m "update lotto data" || exit 0
+          git push
