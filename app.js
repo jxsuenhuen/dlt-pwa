@@ -199,7 +199,7 @@ function renderOverview(){
     draws.length.toLocaleString('zh-CN');
 
 
-  const latest=draws[0];
+  const latest=draws.find(d=>d.issue) || draws[0];
 
 
   $('#latestDate').textContent=
