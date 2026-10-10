@@ -6,13 +6,13 @@ const fmt=n=>String(n).padStart(2,'0');
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function init(){
   try{draws=JSON.parse(localStorage.getItem(STORE))}catch{}
-  if(!Array.isArray(draws)){try{const r=await fetch('./history.json');draws=await r.json()}catch{draws=[]}localStorage.setItem(STORE,JSON.stringify(draws))}
+  if(!Array.isArray(draws)){try{const r=await fetch('./fetch("data/latest.json")');draws=await r.json()}catch{draws=[]}localStorage.setItem(STORE,JSON.stringify(draws))}
   try{const savedExceptions=JSON.parse(localStorage.getItem(SCHEDULE_STORE));scheduleExceptions=Array.isArray(savedExceptions)?savedExceptions:[]}catch{scheduleExceptions=[]}
   draws=draws.map(d=>({issue:String(d.issue||''),date:d.date||'',front:d.front.map(Number),back:d.back.map(Number)})).sort((a,b)=>b.issue.localeCompare(a.issue));
   renderAll(); bind(); setupCalculator(); setupServiceWorker();
   const cfg=readConfig();if(cfg.url&&cfg.key){$('#syncStatus').title='已配置云同步';try{await createClient();await loadCloud()}catch(e){$('#syncStatus').title='云同步暂不可用：'+e.message}}
   $('#settingsBtn').addEventListener('click',()=>openSettings());
-}
+}fetch("data/latest.json")
 function save(){localStorage.setItem(STORE,JSON.stringify(draws));renderAll();if(session&&supabase)syncLater()}
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),2500)}
 function ballList(ns,back=false){return `<div class="number-list ${back?'back':''}">${ns.map(n=>`<i class="num-chip">${fmt(n)}</i>`).join('')}</div>`}
