@@ -202,12 +202,14 @@ function renderOverview(){
     draws.length.toLocaleString('zh-CN');
 
 
-  const latest=draws.find(d=>d.issue) || draws[0];
+  const latest=[...draws]
+  .filter(d=>String(d.issue||'').trim())
+  .sort((a,b)=>Number(b.issue)-Number(a.issue))[0] || draws[0];
 
 
   $('#latestDate').textContent=
     latest
-    ? `第 ${latest.issue} 期`
+    ? `第 ${String(latest.issue).replace(/[^0-9]/g,'')} 期`
     : '尚无记录';
 
 
