@@ -24,18 +24,19 @@ def get_lotto():
         errors="ignore"
     )
 
-    # 获取期号
-    # 获取期号
-issue_match = re.search(
-    r'\d{5}',
-    html
-)
 
-issue = (
-    issue_match.group(0)
-    if issue_match
-    else "未知"
-)
+    # 获取期号
+    issue_match = re.search(
+        r'(\d{5})',
+        html
+    )
+
+    issue = (
+        issue_match.group(1)
+        if issue_match
+        else "未知"
+    )
+
 
     # 获取号码
     nums = re.findall(
@@ -48,20 +49,20 @@ issue = (
         for x in nums
     ]
 
+
     if len(nums) < 7:
         raise Exception(
             "号码获取失败"
         )
 
+
     return {
 
         "issue": issue,
 
-        "front":
-            nums[:5],
+        "front": nums[:5],
 
-        "back":
-            nums[5:7],
+        "back": nums[5:7],
 
         "date":
             datetime.now()
