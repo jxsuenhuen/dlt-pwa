@@ -40,16 +40,14 @@ async function init(){
 
   // 强制读取最新开奖
  try{
-    const r=await fetch(
-      "data/latest.json?t="+Date.now()
-    );
 
-    const latest = await r.json();
+  const r = await fetch(
+    "data/latest.json?t=" + Date.now()
+  );
 
-    if(latest && latest.issue){
+  const latest = await r.json();
 
-      const newLatest={
-          issue:String(latest.issue),
+  if(latest &&
           date:latest.date || '',
           front:latest.front.map(Number),
           back:latest.back.map(Number)
