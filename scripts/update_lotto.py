@@ -56,22 +56,8 @@ def get_lotto():
         )
 
 
-    return {
-
-        "issue": issue,
-
-        "front": nums[:5],
-
-        "back": nums[5:7],
-
-        "date":
-            datetime.now()
-            .strftime("%Y-%m-%d"),
-
-        "source":
-            "江苏体彩"
-
-    }
+    "issue":
+    datetime.now().strftime("%y%m%d"),
 
 
 data = get_lotto()
