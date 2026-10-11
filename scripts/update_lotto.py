@@ -25,10 +25,17 @@ def get_lotto():
     )
 
     # 获取期号
-    issue = re.search(
-        r'期号.*?(\d{5})',
-        html
-    )
+    # 获取期号
+issue_match = re.search(
+    r'\d{5}',
+    html
+)
+
+issue = (
+    issue_match.group(0)
+    if issue_match
+    else "未知"
+)
 
     # 获取号码
     nums = re.findall(
@@ -48,9 +55,7 @@ def get_lotto():
 
     return {
 
-        "issue":
-            issue.group(1)
-            if issue else "未知",
+        "issue": issue,
 
         "front":
             nums[:5],
