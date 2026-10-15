@@ -1,32 +1,80 @@
-name: Update Lotto Data
-permissions:
-  contents: write
+name: Update Lotto Data and Deploy
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   schedule:
-    - cron: "30 14 * * *"
-
+    # UTC: Beijing 22:37, 23:37 and next morning 08:37; delayed results can retry.
+    - cron: '37 14,15,0 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: dlt-pwa-main
+  cancel-in-progress: false
 jobs:
   update:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
         with:
-          python-version: "3.x"
-
-      - name: Update Lotto
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate Python syntax
+        run: python -m py_compile scripts/update_lotto.py
+      - name: Fetch and validate official records
+        run: python scripts/update_lotto.py
+      - name: Commit all data or fail visibly
+        id: commit
+        shell: bash
         run: |
-          python scripts/update_lotto.py
-
-      - name: Commit data
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/latest.json latest.json history.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update validated lotto records'
+            git push origin HEAD:main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.update.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check frontend syntax and stage public files
         run: |
-          git config user.name github-actions
-          git config user.email actions@github.com
-          git add data/latest.json
-          git commit -m "update lotto data" || exit 0
-          git push
+          node --check app.js
+          node --check sw.js
+          mkdir -p _site/data
+          cp index.html app.js styles.css sw.js manifest.json icon.svg history.json latest.json _site/
+          cp data/latest.json _site/data/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy exact updated commit
+        id: deployment
+        uses: actions/deploy-pages@v4
