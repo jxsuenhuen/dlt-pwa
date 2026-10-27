@@ -61,7 +61,7 @@ async function refreshOfficial(){
     if(previous && newest.issue<previous) throw Error('服务器数据倒退，保留已有记录');
     officialRecords.clear();map.forEach((value,key)=>officialRecords.set(key,value));
     draws=mergeOfficial(draws);persistRecords();renderAll();
-    dataStatus(`已读取服务器数据：第 ${newest.issue} 期，开奖日期 ${newest.date}；核查时间 ${new Date().toLocaleString('zh-CN')}。不代表下一期已公布。`);
+    dataStatus(`已读取服务器数据：第 ${newest.issue} 期，开奖日期 ${newest.date}；来源：${newest.source||'历史记录'}；核查时间 ${new Date().toLocaleString('zh-CN')}。不代表下一期已公布。`);
   }catch(e){
     dataStatus('未能核实最新开奖，当前显示本机历史记录：'+e.message);
   }finally{refreshing=false}

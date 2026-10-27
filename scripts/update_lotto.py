@@ -36,6 +36,8 @@ def validate(row, require_date=False):
             raise ValueError(f'Invalid draw date: {issue}')
     elif require_date:
         raise ValueError(f'Missing draw date: {issue}')
+    if row.get('source'):
+        result['source'] = str(row['source'])
     return result
 
 
@@ -64,7 +66,8 @@ def fetch_page(page):
                     raise ValueError('Unexpected API number format')
                 numbers = list(map(int, tokens))
                 parsed.append(validate({'issue': issue, 'date': raw_date[:10],
-                                        'front': numbers[:5], 'back': numbers[5:]}, True))
+                                        'front': numbers[:5], 'back': numbers[5:],
+                                        'source': '中国体彩接口'}, True))
             if len({r['issue'] for r in parsed}) != len(parsed):
                 raise ValueError('Duplicate API issues')
             return sorted(parsed, key=lambda r: r['issue'], reverse=True)
@@ -72,6 +75,50 @@ def fetch_page(page):
             if attempt == 2:
                 raise
             time.sleep(2 ** attempt)
+
+
+# Public third-party mirrors are independent publishers, not official sources.
+MIRRORS = (
+    'https://raw.githubusercontent.com/yangxb919/lottery-data/main/data/dlt.json',
+    'https://raw.githubusercontent.com/gudaoxuri/lottery_history/main/data/dlt.json',
+)
+
+
+def fallback_records(baseline):
+    datasets = []
+    for index, url in enumerate(MIRRORS):
+        request = urllib.request.Request(url, headers={'User-Agent': 'dlt-pwa-update/1.0', 'Accept': 'application/json'})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = json.load(response)
+        if not isinstance(raw, list) or not raw:
+            raise ValueError('Third-party mirror returned no records')
+        records = {}
+        for item in raw:
+            if index == 0:
+                record = {'issue': str(item['issue']), 'date': item['date'],
+                          'front': list(map(int, item['front'])), 'back': list(map(int, item['back']))}
+            else:
+                record = {'issue': str(item['issueNumber']), 'date': item['drawDate'],
+                          'front': list(map(int, item['frontBalls'])), 'back': list(map(int, item['backBalls']))}
+            row = validate(record, True)
+            if row['issue'] in records:
+                raise ValueError('Duplicate mirror issue')
+            records[row['issue']] = row
+        datasets.append(records)
+    left, right = datasets
+    # Both sources must agree on the newest issue and every new issue.
+    if max(left) != max(right) or baseline not in left or baseline not in right:
+        raise ValueError('Third-party mirrors are out of sync or lack baseline')
+    agreed = {}
+    for issue in sorted(set(left) | set(right)):
+        if issue < baseline:
+            continue
+        if issue not in left or issue not in right or left[issue] != right[issue]:
+            raise ValueError(f'Third-party mirrors disagree on issue {issue}')
+        agreed[issue] = {**left[issue], 'source': '第三方数据交叉核对（非官方）'}
+    if not agreed:
+        raise ValueError('No mutually verified records')
+    return agreed
 
 
 def main():
@@ -85,21 +132,25 @@ def main():
         raise ValueError('Duplicate baseline issues')
     baseline = max(merged)
     received = {}
-    for page in range(1, 101):
-        rows = fetch_page(page)
-        for row in rows:
-            previous = received.get(row['issue'])
-            if previous is not None and previous != row:
-                raise ValueError('API changed during pagination; retry later')
-            received[row['issue']] = row
-        if baseline in received:
-            break
-        if rows[-1]['issue'] < baseline:
-            raise ValueError('API does not overlap baseline; refusing gaps or rollback')
-    else:
-        raise ValueError('Pagination limit reached without baseline')
-    if max(received) < baseline:
-        raise ValueError('Refusing stale upstream response')
+    try:
+        for page in range(1, 101):
+            rows = fetch_page(page)
+            for row in rows:
+                previous = received.get(row['issue'])
+                if previous is not None and previous != row:
+                    raise ValueError('API changed during pagination; retry later')
+                received[row['issue']] = row
+            if baseline in received:
+                break
+            if rows[-1]['issue'] < baseline:
+                raise ValueError('API does not overlap baseline; refusing gaps or rollback')
+        else:
+            raise ValueError('Pagination limit reached without baseline')
+        if max(received) < baseline:
+            raise ValueError('Refusing stale upstream response')
+    except Exception as exc:
+        print(f'Official API unavailable or invalid: {exc}; checking two third-party mirrors')
+        received = fallback_records(baseline)
     # Preserve archived records; official API replaces matching issues, including dates.
     merged.update(received)
     ordered = sorted(merged.values(), key=lambda row: row['issue'], reverse=True)
