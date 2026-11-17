@@ -68,7 +68,7 @@ jobs:
           node --check app.js
           node --check sw.js
           mkdir -p _site/data
-          cp index.html app.js styles.css sw.js manifest.json icon.svg history.json latest.json _site/
+          cp index.html app.js styles.css sw.js manifest.json icon.svg history.json latest.json dlt-license-admin.html _site/
           cp data/latest.json _site/data/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
