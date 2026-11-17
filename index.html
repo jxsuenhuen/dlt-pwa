@@ -25,6 +25,59 @@
   <dialog id="drawDialog"><form method="dialog" id="drawForm"><div class="dialog-head"><div><p class="eyebrow">添加历史开奖</p><h2>记录一期号码</h2></div><button class="close-btn" value="cancel" aria-label="关闭">×</button></div><label class="field-label">开奖期号 <small>例如 26113</small><input id="drawIssue" inputmode="numeric" placeholder="可留空"></label><label class="field-label">开奖日期 <small>可选</small><input id="drawDate" type="date"></label><label class="field-label">前区号码 <small>5 个，01–35，空格或逗号分隔</small><input id="frontInput" placeholder="例如：03 12 19 26 33" required></label><label class="field-label">后区号码 <small>2 个，01–12</small><input id="backInput" placeholder="例如：04 09" required></label><p class="form-error" id="formError"></p><div class="dialog-actions"><button class="soft-btn" value="cancel">取消</button><button class="primary" id="saveDraw" value="save">保存记录</button></div></form></dialog>
   <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-head"><div><p class="eyebrow">跨设备同步</p><h2>云同步设置</h2></div><button class="close-btn" value="cancel" aria-label="关闭">×</button></div><p class="settings-intro">先部署 Supabase 项目并执行项目内的 <code>supabase-schema.sql</code>，再填写项目连接信息。Windows 和 iPhone 使用同一邮箱登录即可同步。</p><label class="field-label">Supabase 项目 URL<input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co"></label><label class="field-label">匿名公钥（anon / publishable key）<input id="supabaseKey" type="password" placeholder="仅填写公开 anon key，不要填写 service_role"></label><div class="settings-divider"></div><label class="field-label">邮箱<input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"></label><label class="field-label">密码<input id="authPassword" type="password" placeholder="至少 6 位" autocomplete="current-password"></label><p class="form-error" id="settingsError"></p><div class="dialog-actions split"><button type="button" class="soft-btn" id="signOutBtn">退出登录</button><span><button type="button" class="soft-btn" id="signUpBtn">注册</button> <button type="button" class="primary" id="signInBtn">登录并同步</button></span></div><div class="dialog-foot"><button class="text-btn" value="cancel">关闭</button></div></form></dialog>
   <div class="toast" id="toast" role="status"></div>
+<style>
+html:not(.dlt-licensed) body > header,html:not(.dlt-licensed) body > main{display:none!important}
+#licenseGate{position:fixed;inset:0;z-index:99999;background:#f4f6fb;display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#12203b}
+html.dlt-licensed #licenseGate{display:none}
+#licenseGate .license-card{width:min(100%,440px);padding:32px;background:white;border:1px solid #e2e7f0;border-radius:22px;box-shadow:0 20px 55px #12203b16}
+#licenseGate h1{font-size:27px;margin:0 0 8px}#licenseGate p{line-height:1.7;color:#64748b}
+#licenseGate label{display:block;font-weight:650;margin:18px 0 7px}
+#licenseGate input{box-sizing:border-box;width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:11px;font:inherit}
+#licenseGate button{width:100%;margin-top:16px;border:0;border-radius:11px;background:#101c35;color:white;font-weight:700;font-size:16px;padding:14px;cursor:pointer}
+#licenseGate button:disabled{opacity:.55;cursor:wait}
+#licenseMessage{font-size:14px;white-space:pre-wrap}
+</style>
+<div id="licenseGate" role="region" aria-label="激活码授权">
+<div class="license-card"><h1>大乐透 · 激活授权</h1><p>首次使用请输入购买的激活码。每张卡限绑定一台设备，支持30天卡及永久卡。</p>
+<form id="licenseForm"><label for="licenseCode">激活码</label><input id="licenseCode" placeholder="请输入完整激活码" autocomplete="off" required spellcheck="false"><button id="licenseSubmit" type="submit">激活并进入</button></form>
+<p id="licenseMessage" role="status">正在检查本机授权…</p><p style="font-size:12px">更换浏览器、清除浏览器数据或更换设备，可能需要联系卖家解绑。授权检查需要联网。</p></div></div>
+<script>
+(function(){
+const project='https://ineukijofkhzaicerygx.supabase.co',storage='dlt-license-v1',deviceKey='dlt-device-id-v1';
+const gate=document.getElementById('licenseGate'),form=document.getElementById('licenseForm'),input=document.getElementById('licenseCode'),message=document.getElementById('licenseMessage'),button=document.getElementById('licenseSubmit');
+let device=localStorage.getItem(deviceKey);if(!device){device=crypto.randomUUID();localStorage.setItem(deviceKey,device)}
+const stored=()=>{try{return JSON.parse(localStorage.getItem(storage)||'null')}catch{return null}};
+const note=t=>message.textContent=t;
+const request=async(action,code)=>{
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+ try{const response=await fetch(project+'/functions/v1/license-api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,code,device_id:device}),signal:controller.signal,cache:'no-store'});
+ const data=await response.json().catch(()=>({}));if(!response.ok)throw Error('服务器返回 HTTP '+response.status);
+ return data;}finally{clearTimeout(timeout)}
+};
+const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');if(data.expires_at){const end=new Date(data.expires_at);console.info('DLT 授权有效期至',end.toLocaleString('zh-CN'))}};
+const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'该激活码已绑定其他设备，请联系卖家解绑',device_limit:'已达到设备绑定上限',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
+const errorText=data=>reasons[data.reason]||reasons[data.error]||'授权未通过，请检查激活码或联系卖家';
+async function verify(){
+ const old=stored();if(!old?.code){note('请输入激活码后开始使用。');return}
+ note('正在向服务器验证授权…');
+ try{const data=await request('verify',old.code);if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid')){unlock(data);return}
+ localStorage.removeItem(storage);note(errorText(data));}catch(e){note('联网验证失败：'+e.message+'。请检查网络后重试。')}
+}
+form.addEventListener('submit',async e=>{
+ e.preventDefault();const code=input.value.trim();if(!code)return;
+ button.disabled=true;note('正在激活，请稍候…');
+ try{const data=await request('activate',code);
+ if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid')){
+ localStorage.setItem(storage,JSON.stringify({code}));input.value='';unlock(data);
+ }else note(errorText(data));
+ }catch(err){note('激活失败：'+err.message+'。请稍后重试。')}
+ finally{button.disabled=false}
+});
+verify();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.documentElement.classList.contains('dlt-licensed')){document.documentElement.classList.remove('dlt-licensed');verify()}});
+setInterval(()=>{if(document.documentElement.classList.contains('dlt-licensed')){document.documentElement.classList.remove('dlt-licensed');verify()}},5*60*1000);
+})();
+</script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
