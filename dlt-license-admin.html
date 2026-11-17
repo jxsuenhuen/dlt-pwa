@@ -3,17 +3,73 @@
 :root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#283344;background:#f5f4f8}*{box-sizing:border-box}body{margin:0}.shell{max-width:1120px;margin:0 auto;padding:32px 18px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.brand{font-weight:800;letter-spacing:.3px;font-size:22px}.muted{color:#788293;font-size:13px}.panel{background:#fff;border:1px solid #e8e7ee;border-radius:18px;padding:25px;box-shadow:0 8px 30px #30304708}.login{max-width:450px;margin:8vh auto}h1{font-size:24px;margin:0 0 9px}h2{font-size:18px;margin:0 0 15px}label{display:block;font-size:13px;font-weight:650;margin:16px 0 6px}input{width:100%;padding:12px 13px;border:1px solid #d9dbe4;border-radius:10px;font:inherit;background:white}button{font:inherit;border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:650;background:#6c687f;color:white}button:disabled{opacity:.45;cursor:not-allowed}.ghost{background:#eeedf3;color:#51576a}.primary{background:#79718d}.btnline{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.message{margin-top:15px;font-size:13px;white-space:pre-wrap}.error{color:#a83c43}.ok{color:#32765c}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat{background:#fff;border:1px solid #e8e7ee;border-radius:15px;padding:20px}.stat b{font-size:29px;display:block;margin-top:10px}.section{margin-top:18px}.pill{background:#f0edf5;color:#655e78;padding:5px 10px;border-radius:30px;font-size:12px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:13px 10px;border-bottom:1px solid #efedf3}th{color:#737d8d;font-size:12px}#dashboard{display:none}#logout{display:none}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.shell{padding:18px 12px}.panel{padding:18px}.brand{font-size:18px}}
 </style></head><body><div class="shell"><header><div><div class="brand">DLT / 授权管理中心</div><div class="muted">仅供管理员使用 · Supabase Auth</div></div><button id="logout" class="ghost">退出登录</button></header>
 <section id="login" class="panel login"><h1>管理员登录</h1><p class="muted">使用你在 Supabase Authentication 中创建的管理员邮箱和密码。</p><label for="url">Supabase Project URL</label><input id="url" autocomplete="off" value="https://ineukijofkhzaicerygx.supabase.co"><label for="key">Publishable / anon key</label><input id="key" autocomplete="off" placeholder="sb_publishable_... 或旧版 anon key"><label for="email">管理员邮箱</label><input id="email" type="email" autocomplete="username" placeholder="你的管理员邮箱"><label for="password">登录密码</label><input id="password" type="password" autocomplete="current-password" placeholder="你的登录密码"><div class="btnline"><button id="signin" class="primary">登录并验证管理员身份</button></div><p id="loginmsg" class="message" role="status"></p><p class="muted">Project URL 和 publishable key 只保存在当前浏览器。密码不存储。不要填写 service_role / secret key。</p></section>
-<section id="dashboard"><div class="toolbar"><div><h1>激活码总览</h1><p class="muted">管理员身份已通过服务器验证</p></div><span class="pill">安全登录</span></div><div class="grid"><div class="stat"><span class="muted">累计生成</span><b>—</b></div><div class="stat"><span class="muted">已激活</span><b>—</b></div><div class="stat"><span class="muted">未使用</span><b>—</b></div><div class="stat"><span class="muted">已禁用</span><b>—</b></div></div><div class="panel section"><h2>生成激活码</h2><p class="muted">销售方案：30天月卡 / 永久卡；每码绑定1台设备。</p><div class="btnline"><button disabled title="等待部署管理操作接口">生成30天卡（待接入）</button><button disabled title="等待部署管理操作接口">生成永久卡（待接入）</button></div><p class="muted">管理接口当前只有 ping 权限测试。生成、禁用、解绑功能将在下一阶段接入，避免出现仅有界面但实际无效的按钮。</p></div><div class="panel section"><h2>激活码列表</h2><div class="tablewrap"><table><thead><tr><th>激活码</th><th>类型</th><th>状态</th><th>激活时间</th><th>到期时间</th><th>操作</th></tr></thead><tbody><tr><td colspan="6" class="muted">等待连接 license-admin 管理接口</td></tr></tbody></table></div></div><p id="dashmsg" class="message" role="status"></p></section></div>
+<section id="dashboard"><div class="toolbar"><div><h1>激活码总览</h1><p class="muted">管理员身份已通过服务器验证</p></div><span class="pill">安全登录</span></div><div class="grid"><div class="stat"><span class="muted">累计生成</span><b>—</b></div><div class="stat"><span class="muted">已激活</span><b>—</b></div><div class="stat"><span class="muted">未使用</span><b>—</b></div><div class="stat"><span class="muted">已禁用</span><b>—</b></div></div><div class="panel section"><h2>生成激活码</h2><p class="muted">销售方案：30天月卡 / 永久卡；每码绑定1台设备。</p><label for="quantity">生成数量（1–100）</label><input id="quantity" type="number" min="1" max="100" value="1" style="max-width:170px"><div class="btnline"><button id="gen30" class="primary">生成30天卡</button><button id="gen0" class="primary">生成永久卡</button><button id="refresh" class="ghost">刷新列表</button></div><div id="generatedBox" hidden><h2 style="margin-top:20px">本次生成的激活码（仅显示一次）</h2><textarea id="generated" readonly style="width:100%;min-height:150px;padding:12px;border:1px solid #ddd;border-radius:10px"></textarea><div class="btnline"><button id="copyCodes" class="ghost">复制全部</button><button id="exportCodes" class="ghost">下载TXT备份</button></div><p class="muted">请立即妥善保存。刷新或退出后不会再显示明文。</p></div></div><div class="panel section"><h2>激活码列表</h2><div class="tablewrap"><table><thead><tr><th>激活码</th><th>类型</th><th>状态</th><th>激活时间</th><th>到期时间</th><th>操作</th></tr></thead><tbody id="codeRows"><tr><td colspan="6" class="muted">正在加载…</td></tr></tbody></table></div></div><p id="dashmsg" class="message" role="status"></p></section></div>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-const $=id=>document.getElementById(id);let client=null;let activeUrl='';
+const $=id=>document.getElementById(id);
+let client=null,activeUrl='',activeKey='',accessToken='',busy=false;
 const msg=(id,t,good=false)=>{$(id).textContent=t;$(id).className='message '+(good?'ok':'error')};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const date=s=>s?new Date(s).toLocaleString('zh-CN'):'—';
+const api=async body=>{
+  if(!accessToken)throw Error('登录已失效，请重新登录');
+  const response=await fetch(activeUrl+'/functions/v1/license-admin',{method:'POST',headers:{'Content-Type':'application/json','apikey':activeKey,'Authorization':'Bearer '+accessToken},body:JSON.stringify(body),cache:'no-store'});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||result.success!==true)throw Error((result.error||'接口请求失败')+(result.detail?'：'+result.detail:'')+' (HTTP '+response.status+')');
+  return result;
+};
+const stats=(i,v)=>document.querySelectorAll('.stat b')[i].textContent=String(v);
+const load=async()=>{
+  const data=await api({action:'list'});
+  const rows=data.codes||[], st=data.stats||{};
+  stats(0,st.total??rows.length);stats(1,st.active??0);stats(2,st.unused??0);stats(3,st.disabled??0);
+  $('codeRows').innerHTML=rows.length?rows.map(r=>{
+    const expired=r.status==='active'&&r.expires_at&&new Date(r.expires_at)<new Date();
+    const label=r.status==='disabled'?'已禁用':expired?'已过期':r.status==='active'?'已激活':'未使用';
+    return '<tr><td><small title="'+esc(r.id)+'">'+esc(r.id.slice(0,8))+'…</small></td><td>'+(r.duration_days===0?'永久卡':'30天卡')+'</td><td>'+label+'</td><td>'+esc(date(r.activated_at))+'</td><td>'+(r.duration_days===0?'永久':esc(date(r.expires_at)))+'</td><td><div class="btnline" style="margin:0">'+(r.status!=='disabled'?'<button class="ghost" data-act="disable" data-id="'+esc(r.id)+'">禁用</button>':'')+(r.status==='active'?'<button class="ghost" data-act="unbind" data-id="'+esc(r.id)+'">解绑</button>':'')+'</div></td></tr>';
+  }).join(''):'<tr><td colspan="6" class="muted">还没有激活码</td></tr>';
+  msg('dashmsg','列表已更新'+(data.limited?'（仅展示最近1000条）':'')+'。',true);
+};
+const run=async(fn)=>{if(busy)return;busy=true;['gen30','gen0','refresh'].forEach(id=>$(id).disabled=true);try{await fn()}catch(e){msg('dashmsg',e.message||String(e))}finally{busy=false;['gen30','gen0','refresh'].forEach(id=>$(id).disabled=false)}};
 try{const cfg=JSON.parse(localStorage.getItem('dlt-admin-config')||'{}');if(cfg.url)$('url').value=cfg.url;if(cfg.key)$('key').value=cfg.key;}catch{}
-$('signin').onclick=async()=>{const url=$('url').value.trim().replace(/\/$/,'');const key=$('key').value.trim();const email=$('email').value.trim();const password=$('password').value;$('signin').disabled=true;msg('loginmsg','正在验证身份…',true);
-try{if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url))throw Error('请检查 Supabase Project URL');if(!key||!email||!password)throw Error('请完整填写 key、邮箱和密码');if(key.startsWith('sb_secret_'))throw Error('不能使用 secret key');
-client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const {data,error}=await client.auth.signInWithPassword({email,password});$('password').value='';if(error)throw Error(error.message);if(!data.session?.access_token)throw Error('未获得登录令牌');activeUrl=url;
-const response=await fetch(url+'/functions/v1/license-admin',{method:'POST',headers:{'Content-Type':'application/json','apikey':key,'Authorization':'Bearer '+data.session.access_token},body:JSON.stringify({action:'ping'})});let result={};try{result=await response.json()}catch{}if(!response.ok||result.success!==true)throw Error('管理员接口拒绝访问：'+(result.error||response.status));
-localStorage.setItem('dlt-admin-config',JSON.stringify({url,key}));$('login').style.display='none';$('dashboard').style.display='block';$('logout').style.display='inline-block';msg('dashmsg','管理员身份验证成功。等待部署管理操作接口。',true);
-}catch(e){if(client)await client.auth.signOut().catch(()=>{});msg('loginmsg',e.message||String(e));}finally{$('signin').disabled=false;}};
-$('logout').onclick=async()=>{if(client)await client.auth.signOut();$('dashboard').style.display='none';$('login').style.display='block';$('logout').style.display='none';msg('loginmsg','已退出登录。',true)};
+$('signin').onclick=async()=>{
+ const url=$('url').value.trim().replace(/\/$/,'');const key=$('key').value.trim(),email=$('email').value.trim(),password=$('password').value;
+ $('signin').disabled=true;msg('loginmsg','正在验证身份…',true);
+ try{
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url))throw Error('请检查 Supabase Project URL');
+ if(!key||!email||!password)throw Error('请完整填写 key、邮箱和密码');
+ if(key.startsWith('sb_secret_'))throw Error('不能使用 secret key');
+ client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data,error}=await client.auth.signInWithPassword({email,password});$('password').value='';
+ if(error)throw Error(error.message);if(!data.session?.access_token)throw Error('未获得登录令牌');
+ activeUrl=url;activeKey=key;accessToken=data.session.access_token;
+ await api({action:'ping'});
+ localStorage.setItem('dlt-admin-config',JSON.stringify({url,key}));
+ $('login').style.display='none';$('dashboard').style.display='block';$('logout').style.display='inline-block';
+ await run(load);
+ }catch(e){accessToken='';if(client)await client.auth.signOut().catch(()=>{});msg('loginmsg',e.message||String(e))}
+ finally{$('signin').disabled=false}
+};
+$('refresh').onclick=()=>run(load);
+const generate=days=>run(async()=>{
+ const count=Number($('quantity').value);
+ if(!Number.isInteger(count)||count<1||count>100)throw Error('数量必须为1到100的整数');
+ if(!confirm('确定生成 '+count+' 张'+(days===0?'永久卡':'30天卡')+'吗？'))return;
+ const data=await api({action:'generate',duration_days:days,count});
+ const codes=data.generated||[];
+ $('generated').value=codes.join('\n');$('generatedBox').hidden=false;
+ msg('dashmsg','已生成 '+codes.length+' 张，请立即复制或下载保存。',true);
+ try{await load()}catch(e){msg('dashmsg','生成成功，但列表刷新失败：'+e.message)}
+});
+$('gen30').onclick=()=>generate(30);$('gen0').onclick=()=>generate(0);
+$('copyCodes').onclick=async()=>{try{await navigator.clipboard.writeText($('generated').value);msg('dashmsg','已复制激活码，请安全保存。',true)}catch{ $('generated').select();msg('dashmsg','请手动复制选中的激活码。')}};
+$('exportCodes').onclick=()=>{
+ const blob=new Blob([$('generated').value+'\n'],{type:'text/plain;charset=utf-8'});
+ const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='DLT-activation-codes-'+new Date().toISOString().slice(0,10)+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+};
+$('codeRows').onclick=e=>{const b=e.target.closest('button[data-act]');if(!b)return;const action=b.dataset.act,id=b.dataset.id;
+ if(!confirm(action==='disable'?'确认禁用这张激活码？已激活设备也将无法继续通过服务端验证。':'确认解绑这张激活码的设备？原设备授权将被撤销。'))return;
+ run(async()=>{await api({action,id});await load();msg('dashmsg',action==='disable'?'已禁用。':'已解绑。',true)});
+};
+$('logout').onclick=async()=>{accessToken='';activeKey='';$('generated').value='';$('generatedBox').hidden=true;if(client)await client.auth.signOut().catch(()=>{});$('dashboard').style.display='none';$('login').style.display='block';$('logout').style.display='none';msg('loginmsg','已退出登录。',true)};
 </script></body></html>
