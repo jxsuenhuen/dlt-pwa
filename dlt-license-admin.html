@@ -30,7 +30,7 @@ const load=async()=>{
   }).join(''):'<tr><td colspan="7" class="muted">还没有激活码</td></tr>';
   msg('dashmsg','列表已更新'+(data.limited?'（仅展示最近1000条）':'')+'。',true);
 };
-const run=async(fn)=>{if(busy)return;busy=true;['gen0','refresh'].forEach(id=>$(id).disabled=true);try{await fn()}catch(e){msg('dashmsg',e.message||String(e))}finally{busy=false;['gen30','gen0','refresh'].forEach(id=>$(id).disabled=false)}};
+const run=async(fn)=>{if(busy)return;busy=true;['gen0','refresh'].forEach(id=>$(id).disabled=true);try{await fn()}catch(e){msg('dashmsg',e.message||String(e))}finally{busy=false;['gen0','refresh'].forEach(id=>{const button=$(id);if(button)button.disabled=false})}};
 try{const cfg=JSON.parse(localStorage.getItem('dlt-admin-config')||'{}');if(cfg.url)$('url').value=cfg.url;if(cfg.key)$('key').value=cfg.key;}catch{}
 $('signin').onclick=async()=>{
  const url=$('url').value.trim().replace(/\/$/,'');const key=$('key').value.trim(),email=$('email').value.trim(),password=$('password').value;
