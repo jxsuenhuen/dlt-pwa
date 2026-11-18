@@ -38,7 +38,7 @@ html.dlt-licensed #licenseGate{display:none}
 #licenseMessage{font-size:14px;white-space:pre-wrap}
 </style>
 <div id="licenseGate" role="region" aria-label="激活码授权">
-<div class="license-card"><h1>大乐透 · 激活授权</h1><p>首次使用请输入购买的激活码。每张卡限绑定一台设备，支持30天卡及永久卡。</p>
+<div class="license-card"><h1>大乐透 · 激活授权</h1><p>首次使用请输入购买的激活码。每张激活码永久有效，最多可绑定2台设备。</p>
 <form id="licenseForm"><label for="licenseCode">激活码</label><input id="licenseCode" placeholder="请输入完整激活码" autocomplete="off" required spellcheck="false"><button id="licenseSubmit" type="submit">激活并进入</button></form>
 <p id="licenseMessage" role="status">正在检查本机授权…</p><p style="font-size:12px">更换浏览器、清除浏览器数据或更换设备，可能需要联系卖家解绑。授权检查需要联网。</p></div></div>
 <script>
@@ -55,7 +55,7 @@ const request=async(action,code)=>{
  return data;}finally{clearTimeout(timeout)}
 };
 const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');if(data.expires_at){const end=new Date(data.expires_at);console.info('DLT 授权有效期至',end.toLocaleString('zh-CN'))}};
-const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'该激活码已绑定其他设备，请联系卖家解绑',device_limit:'已达到设备绑定上限',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
+const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'该激活码已绑定其他设备，请联系卖家解绑',device_limit:'此激活码已绑定2台设备，请联系卖家解绑',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
 const errorText=data=>reasons[data.reason]||reasons[data.error]||'授权未通过，请检查激活码或联系卖家';
 async function verify(){
  const old=stored();if(!old?.code){note('请输入激活码后开始使用。');return}
