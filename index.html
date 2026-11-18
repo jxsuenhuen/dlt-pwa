@@ -7,7 +7,7 @@
   <title>大乐透 · 开奖与选号</title>
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="#home"><span class="brand-mark">乐</span><span>大乐透 <small>开奖与选号</small></span></a><div class="header-right"><button type="button" id="licenseInfoBtn" class="sync-pill" style="border:0;cursor:pointer;margin-right:8px" aria-label="查看授权信息">🔒 授权验证中</button><span class="sync-pill" id="syncStatus"><i></i>仅此设备</span><button class="icon-btn" id="settingsBtn" aria-label="设置同步">⚙</button></div></header>
+  <header class="topbar"><a class="brand" href="#home"><span class="brand-mark">乐</span><span>大乐透 <small>开奖与选号</small></span></a><div class="header-right"><button type="button" id="licenseInfoBtn" class="sync-pill" style="border:0;cursor:pointer;margin-right:8px" aria-label="查看授权信息">🔒 授权验证中</button><span class="sync-pill" id="syncStatus"><i></i>本机数据</span><button class="icon-btn" id="settingsBtn" aria-label="设置同步">⚙</button></div></header>
   <main>
     <section class="hero" id="home"><div class="hero-copy"><p class="eyebrow">记录 · 统计 · 随机选号</p><h1>每一注，都有自己的节奏。</h1><p class="subhead">整理历史开奖，看看号码分布，用轻松的方式生成一组号码。</p><button class="primary" id="heroPick">给我一组号码 <span>→</span></button></div><div class="hero-orbit"><div class="orb orb-a"></div><div class="orb orb-b"></div><span class="hero-star">✦</span><div class="ticket"><span>大乐透</span><div><b>前区</b><i>01</i><i>12</i><i>19</i><i>26</i><i>33</i></div><div><b>后区</b><em>04</em><em>09</em></div><small>随机示意 · 非开奖预测</small></div></div></section>
     <nav class="tabs" aria-label="主导航"><button class="tab active" data-tab="overview">总览</button><button class="tab" data-tab="history">开奖记录</button><button class="tab" data-tab="schedule">开奖日历</button><button class="tab" data-tab="picker">随机选号</button><button class="tab" data-tab="analysis">图表分析</button><button class="tab" data-tab="calculator">计算器</button></nav>
@@ -56,7 +56,7 @@ const request=async(action,code)=>{
  const data=await response.json().catch(()=>({}));if(!response.ok)throw Error('服务器返回 HTTP '+response.status);
  return data;}finally{clearTimeout(timeout)}
 };
-const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');infoBtn.textContent='✓ 永久授权';infoStatus.textContent='✓ 授权有效，完整功能已解锁';const count=data.bound_devices??data.device_count??data.bound_device_count;if(Number.isInteger(count)&&count>=0&&count<=2)deviceCount.textContent='已绑定设备：'+count+' / 2';else deviceCount.textContent='设备上限：2 台（当前数量请以管理后台为准）';};
+const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');infoBtn.textContent='✓ 永久授权';infoStatus.textContent='✓ 授权有效，完整功能已解锁';const count=data.bound_devices??data.device_count??data.bound_device_count;if(Number.isInteger(count)&&count>=0&&count<=2)deviceCount.textContent='已绑定设备：'+count+' / 2';else deviceCount.textContent='已绑定数量请以管理后台为准';};
 const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'设备不匹配，请联系卖家检查设备绑定',device_limit:'此激活码已绑定2台设备，请联系卖家解绑',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
 const errorText=data=>reasons[data.reason]||reasons[data.error]||'授权未通过，请检查激活码或联系卖家';
 async function verify(){
