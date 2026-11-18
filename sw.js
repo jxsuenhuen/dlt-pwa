@@ -1,4 +1,4 @@
-const CACHE = 'dlt-pwa-v4-license-20261118';
+const CACHE = 'dlt-pwa-v5-license-buyer-20261118';
 const BASE = self.registration.scope;
 const SHELL = ['index.html', 'styles.css', 'app.js', 'manifest.json', 'icon.svg'];
 self.addEventListener('install', event => {
@@ -25,7 +25,12 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(new Request(request, {cache: 'no-store'})));
     return;
   }
-  // Require a fresh online license gate on every page navigation; never serve an old unlocked shell.\n  if (request.mode === 'navigate') {\n    event.respondWith(fetch(new Request(request, {cache: 'no-store'})));\n    return;\n  }\n  const shellPath = path;
+  // Require a fresh online license gate on every page navigation; never serve an old unlocked shell.
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(new Request(request, {cache: 'no-store'})));
+    return;
+  }
+  const shellPath = path;
   if (!SHELL.includes(shellPath)) return;
   const key = new URL(shellPath, BASE).href;
   const network = (async () => {
