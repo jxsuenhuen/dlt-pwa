@@ -60,14 +60,14 @@ const errorText=data=>reasons[data.reason]||reasons[data.error]||'授权未通�
 async function verify(){
  const old=stored();if(!old?.code){note('请输入激活码后开始使用。');return}
  note('正在向服务器验证授权…');
- try{const data=await request('verify',old.code);if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid')){unlock(data);return}
+ try{const data=await request('verify',old.code);if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid'||data.status==='activated')){unlock(data);return}
  localStorage.removeItem(storage);note(errorText(data));}catch(e){note('联网验证失败：'+e.message+'。请检查网络后重试。')}
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();const code=input.value.trim();if(!code)return;
  button.disabled=true;note('正在激活，请稍候…');
  try{const data=await request('activate',code);
- if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid')){
+ if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid'||data.status==='activated')){
  localStorage.setItem(storage,JSON.stringify({code}));input.value='';unlock(data);
  }else note(errorText(data));
  }catch(err){note('激活失败：'+err.message+'。请稍后重试。')}
