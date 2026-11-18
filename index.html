@@ -7,7 +7,7 @@
   <title>大乐透 · 开奖与选号</title>
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="#home"><span class="brand-mark">乐</span><span>大乐透 <small>开奖与选号</small></span></a><div class="header-right"><span class="sync-pill" id="syncStatus"><i></i>仅此设备</span><button class="icon-btn" id="settingsBtn" aria-label="设置同步">⚙</button></div></header>
+  <header class="topbar"><a class="brand" href="#home"><span class="brand-mark">乐</span><span>大乐透 <small>开奖与选号</small></span></a><div class="header-right"><button type="button" id="licenseInfoBtn" class="sync-pill" style="border:0;cursor:pointer;margin-right:8px" aria-label="查看授权信息">🔒 授权验证中</button><span class="sync-pill" id="syncStatus"><i></i>仅此设备</span><button class="icon-btn" id="settingsBtn" aria-label="设置同步">⚙</button></div></header>
   <main>
     <section class="hero" id="home"><div class="hero-copy"><p class="eyebrow">记录 · 统计 · 随机选号</p><h1>每一注，都有自己的节奏。</h1><p class="subhead">整理历史开奖，看看号码分布，用轻松的方式生成一组号码。</p><button class="primary" id="heroPick">给我一组号码 <span>→</span></button></div><div class="hero-orbit"><div class="orb orb-a"></div><div class="orb orb-b"></div><span class="hero-star">✦</span><div class="ticket"><span>大乐透</span><div><b>前区</b><i>01</i><i>12</i><i>19</i><i>26</i><i>33</i></div><div><b>后区</b><em>04</em><em>09</em></div><small>随机示意 · 非开奖预测</small></div></div></section>
     <nav class="tabs" aria-label="主导航"><button class="tab active" data-tab="overview">总览</button><button class="tab" data-tab="history">开奖记录</button><button class="tab" data-tab="schedule">开奖日历</button><button class="tab" data-tab="picker">随机选号</button><button class="tab" data-tab="analysis">图表分析</button><button class="tab" data-tab="calculator">计算器</button></nav>
@@ -24,7 +24,7 @@
   </main>
   <dialog id="drawDialog"><form method="dialog" id="drawForm"><div class="dialog-head"><div><p class="eyebrow">添加历史开奖</p><h2>记录一期号码</h2></div><button class="close-btn" value="cancel" aria-label="关闭">×</button></div><label class="field-label">开奖期号 <small>例如 26113</small><input id="drawIssue" inputmode="numeric" placeholder="可留空"></label><label class="field-label">开奖日期 <small>可选</small><input id="drawDate" type="date"></label><label class="field-label">前区号码 <small>5 个，01–35，空格或逗号分隔</small><input id="frontInput" placeholder="例如：03 12 19 26 33" required></label><label class="field-label">后区号码 <small>2 个，01–12</small><input id="backInput" placeholder="例如：04 09" required></label><p class="form-error" id="formError"></p><div class="dialog-actions"><button class="soft-btn" value="cancel">取消</button><button class="primary" id="saveDraw" value="save">保存记录</button></div></form></dialog>
   <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-head"><div><p class="eyebrow">跨设备同步</p><h2>云同步设置</h2></div><button class="close-btn" value="cancel" aria-label="关闭">×</button></div><p class="settings-intro">先部署 Supabase 项目并执行项目内的 <code>supabase-schema.sql</code>，再填写项目连接信息。Windows 和 iPhone 使用同一邮箱登录即可同步。</p><label class="field-label">Supabase 项目 URL<input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co"></label><label class="field-label">匿名公钥（anon / publishable key）<input id="supabaseKey" type="password" placeholder="仅填写公开 anon key，不要填写 service_role"></label><div class="settings-divider"></div><label class="field-label">邮箱<input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"></label><label class="field-label">密码<input id="authPassword" type="password" placeholder="至少 6 位" autocomplete="current-password"></label><p class="form-error" id="settingsError"></p><div class="dialog-actions split"><button type="button" class="soft-btn" id="signOutBtn">退出登录</button><span><button type="button" class="soft-btn" id="signUpBtn">注册</button> <button type="button" class="primary" id="signInBtn">登录并同步</button></span></div><div class="dialog-foot"><button class="text-btn" value="cancel">关闭</button></div></form></dialog>
-  <div class="toast" id="toast" role="status"></div>
+  <div class="toast" id="toast" role="status"></div><dialog id="licenseInfoDialog" style="border:1px solid #e2e7f0;border-radius:18px;padding:26px;max-width:min(90vw,420px);color:#12203b"><h2 style="margin:0 0 12px">我的授权</h2><p id="licenseInfoStatus">正在验证授权…</p><p>授权期限：<strong>永久有效</strong></p><p>设备上限：<strong>2 台</strong></p><p id="licenseDeviceCount">已绑定数量：请以管理后台为准</p><p style="color:#64748b;font-size:13px">更换浏览器、清除网站数据或更换设备，可能占用新的设备名额。授权检查需要联网。</p><form method="dialog"><button style="padding:10px 22px;border:0;border-radius:9px;background:#101c35;color:white;cursor:pointer">关闭</button></form></dialog>
 <style>
 html:not(.dlt-licensed) body > header,html:not(.dlt-licensed) body > main{display:none!important}
 #licenseGate{position:fixed;inset:0;z-index:99999;background:#f4f6fb;display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#12203b}
@@ -35,15 +35,17 @@ html.dlt-licensed #licenseGate{display:none}
 #licenseGate input{box-sizing:border-box;width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:11px;font:inherit}
 #licenseGate button{width:100%;margin-top:16px;border:0;border-radius:11px;background:#101c35;color:white;font-weight:700;font-size:16px;padding:14px;cursor:pointer}
 #licenseGate button:disabled{opacity:.55;cursor:wait}
-#licenseMessage{font-size:14px;white-space:pre-wrap}
+#licenseMessage{font-size:14px;white-space:pre-wrap}#licenseGate .license-benefits{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}#licenseGate .license-benefits span{background:#edf2fa;color:#263f67;border-radius:20px;padding:7px 11px;font-size:12px;font-weight:650}#licenseGate .license-success{color:#18754a!important;font-weight:650}
 </style>
 <div id="licenseGate" role="region" aria-label="激活码授权">
-<div class="license-card"><h1>大乐透 · 激活授权</h1><p>首次使用请输入购买的激活码。每张激活码永久有效，最多可绑定2台设备。</p>
+<div class="license-card"><h1>大乐透 · 激活授权</h1><p>首次使用请输入购买的激活码，验证成功后即可使用完整功能。</p><div class="license-benefits"><span>✓ 一次购买，永久有效</span><span>✓ 最多绑定 2 台设备</span><span>✓ 开奖与选号功能</span></div>
 <form id="licenseForm"><label for="licenseCode">激活码</label><input id="licenseCode" placeholder="请输入完整激活码" autocomplete="off" required spellcheck="false"><button id="licenseSubmit" type="submit">激活并进入</button></form>
 <p id="licenseMessage" role="status">正在检查本机授权…</p><p style="font-size:12px">更换浏览器、清除浏览器数据或更换设备，可能需要联系卖家解绑。授权检查需要联网。</p></div></div>
 <script>
 (function(){
 const project='https://ineukijofkhzaicerygx.supabase.co',storage='dlt-license-v1',deviceKey='dlt-device-id-v1';
+const infoBtn=document.getElementById('licenseInfoBtn'),infoDialog=document.getElementById('licenseInfoDialog'),infoStatus=document.getElementById('licenseInfoStatus'),deviceCount=document.getElementById('licenseDeviceCount');
+infoBtn.addEventListener('click',()=>infoDialog.showModal());
 const gate=document.getElementById('licenseGate'),form=document.getElementById('licenseForm'),input=document.getElementById('licenseCode'),message=document.getElementById('licenseMessage'),button=document.getElementById('licenseSubmit');
 let device=localStorage.getItem(deviceKey);if(!device){device=crypto.randomUUID();localStorage.setItem(deviceKey,device)}
 const stored=()=>{try{return JSON.parse(localStorage.getItem(storage)||'null')}catch{return null}};
@@ -54,21 +56,21 @@ const request=async(action,code)=>{
  const data=await response.json().catch(()=>({}));if(!response.ok)throw Error('服务器返回 HTTP '+response.status);
  return data;}finally{clearTimeout(timeout)}
 };
-const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');if(data.expires_at){const end=new Date(data.expires_at);console.info('DLT 授权有效期至',end.toLocaleString('zh-CN'))}};
-const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'该激活码已绑定其他设备，请联系卖家解绑',device_limit:'此激活码已绑定2台设备，请联系卖家解绑',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
+const unlock=data=>{document.documentElement.classList.add('dlt-licensed');gate.setAttribute('aria-hidden','true');infoBtn.textContent='✓ 永久授权';infoStatus.textContent='✓ 授权有效，完整功能已解锁';const count=data.bound_devices??data.device_count??data.bound_device_count;if(Number.isInteger(count)&&count>=0&&count<=2)deviceCount.textContent='已绑定设备：'+count+' / 2';else deviceCount.textContent='设备上限：2 台（当前数量请以管理后台为准）';};
+const reasons={invalid_code:'激活码不存在或输入错误',disabled:'激活码已被禁用',expired:'激活码已过期',device_mismatch:'设备不匹配，请联系卖家检查设备绑定',device_limit:'此激活码已绑定2台设备，请联系卖家解绑',already_bound:'激活码已绑定其他设备',unauthorized:'接口未授权，请联系卖家检查服务端配置'};
 const errorText=data=>reasons[data.reason]||reasons[data.error]||'授权未通过，请检查激活码或联系卖家';
 async function verify(){
  const old=stored();if(!old?.code){note('请输入激活码后开始使用。');return}
- note('正在向服务器验证授权…');
+ note('正在向服务器验证授权…');infoBtn.textContent='🔒 正在验证';
  try{const data=await request('verify',old.code);if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid'||data.status==='activated')){unlock(data);return}
- localStorage.removeItem(storage);note(errorText(data));}catch(e){note('联网验证失败：'+e.message+'。请检查网络后重试。')}
+ localStorage.removeItem(storage);infoBtn.textContent='🔒 授权未通过';note(errorText(data));}catch(e){infoBtn.textContent='🔒 网络待恢复';note('联网验证失败：'+e.message+'。请检查网络后重试。')}
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();const code=input.value.trim();if(!code)return;
  button.disabled=true;note('正在激活，请稍候…');
  try{const data=await request('activate',code);
  if(data.success===true&&(data.status===null||data.status==='active'||data.status==='valid'||data.status==='activated')){
- localStorage.setItem(storage,JSON.stringify({code}));input.value='';unlock(data);
+ localStorage.setItem(storage,JSON.stringify({code}));input.value='';unlock(data);infoStatus.textContent='✓ 激活成功，永久授权已生效';
  }else note(errorText(data));
  }catch(err){note('激活失败：'+err.message+'。请稍后重试。')}
  finally{button.disabled=false}
