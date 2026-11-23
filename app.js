@@ -124,12 +124,47 @@ function fillIssueSelect(){const e=$('#compareIssue');if(e)e.innerHTML=draws.map
 function parseNums(s,count,max){const a=s.split(/[\s,，、]+/).filter(Boolean).map(x=>Number(x));if(a.length!==count||a.some(n=>!Number.isInteger(n)||n<1||n>max)||new Set(a).size!==a.length)throw Error(`请填写 ${count} 个不重复的 01–${fmt(max)} 号码`);return a.sort((x,y)=>x-y)}
 function randomSet(total,count){const a=Array.from({length:total},(_,i)=>i+1);for(let i=a.length-1;i>0;i--){const j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,count).sort((x,y)=>x-y)}
 function pick(){const f=randomSet(35,5),b=randomSet(12,2);$('#frontPicks').innerHTML=f.map(n=>`<i>${fmt(n)}</i>`).join('');$('#backPicks').innerHTML=b.map(n=>`<i>${fmt(n)}</i>`).join('')}
+
+function backtestHash(seed){seed|=0;seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return seed>>>0}
+function backtestNumbers(history,zone,count,method,seed){
+ const max=zone==='front'?35:12,counts=Array(max+1).fill(0);
+ for(const d of history.slice(-60))for(const n of d[zone])counts[n]++;
+ const ranked=Array.from({length:max},(_,i)=>i+1);
+ if(method==='random'){
+  let state=seed||1;
+  for(let i=ranked.length-1;i>0;i--){state=backtestHash(state);const j=state%(i+1);[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
+ }else{
+  ranked.sort((a,b)=>(method==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(a-b));
+ }
+ return ranked.slice(0,count).sort((a,b)=>a-b);
+}
+function runBacktest(){
+ const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
+ const records=[...draws].filter(d=>/^\\d{5}$/.test(d.issue)&&d.date&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
+ const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
+ const warmup=60,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
+ if(n<1){output.textContent='至少需要61期具有日期的有效历史数据才能回测。';return}
+ const methods=[['random','模拟随机'],['hot','近60期高频'],['cold','近60期低频']];
+ const results=methods.map(([key,label])=>({key,label,zero:0,front:0,back:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0)}));
+ for(let i=unique.length-n;i<unique.length;i++){
+  const previous=unique.slice(0,i),actual=unique[i],seed=Number(actual.issue)||i;
+  for(const result of results){
+   const front=backtestNumbers(previous,'front',5,result.key,seed*31+7);
+   const back=backtestNumbers(previous,'back',2,result.key,seed*37+11);
+   const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length;
+   result.front+=f;result.back+=b;result.frontDist[f]++;result.backDist[b]++;if(!f&&!b)result.zero++;
+  }
+ }
+ const th='<tr><th style="text-align:left;padding:8px">方法</th><th>前区平均命中</th><th>后区平均命中</th><th>全0期数</th></tr>';
+ output.innerHTML='<p>已回测最近 '+n+' 期（每种方法每期1注；前置60期用于计算）。</p><div style="overflow-x:auto"><table style="width:100%;min-width:430px;border-collapse:collapse;text-align:center">'+th+results.map(r=>'<tr><td style="padding:9px;text-align:left;border-top:1px solid #e2e8f0">'+r.label+'</td><td style="border-top:1px solid #e2e8f0">'+(r.front/n).toFixed(3)+'</td><td style="border-top:1px solid #e2e8f0">'+(r.back/n).toFixed(3)+'</td><td style="border-top:1px solid #e2e8f0">'+r.zero+'/'+n+'</td></tr>').join('')+'</table></div><p style="font-size:13px;color:#64748b">理论随机期望：前区约0.714个/注、后区约0.333个/注。随机基准为确定性伪随机模拟，重新运行结果一致；不代表真实购买记录。</p>';
+}
+
 function choose(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);let x=1;for(let i=1;i<=k;i++)x=x*(n-k+i)/i;return Math.round(x)}
 function setupCalculator(){for(let n=5;n<=35;n++)$('#calcFront').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===5?'selected':''}>${n} 个</option>`);for(let n=2;n<=12;n++)$('#calcBack').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===2?'selected':''}>${n} 个</option>`);const calc=()=>{let lines=choose(+$(`#calcFront`).value,5)*choose(+$(`#calcBack`).value,2);let cost=lines*(2+($('#calcAddOn').checked?1:0));$('#calcLines').textContent=`${lines.toLocaleString('zh-CN')} 注`,$('#calcCost').textContent=`${cost.toLocaleString('zh-CN')} 元`};['calcFront','calcBack','calcAddOn'].forEach(id=>$('#'+id).addEventListener('change',calc));calc()}
 function prizeTier(f,b){if(f===5&&b===2)return'一等奖';if(f===5&&b===1)return'二等奖';if((f===5&&b===0)||(f===4&&b===2))return'三等奖';if(f===4&&b===1)return'四等奖';if((f===4&&b===0)||(f===3&&b===2))return'五等奖';if((f===3&&b===1)||(f===2&&b===2))return'六等奖';if((f===3&&b===0)||(f===2&&b===1)||(f===1&&b===2)||(f===0&&b===2))return'七等奖';return'未中奖'}
 function bind(){
  $$('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.tab));$$('[data-goto]').forEach(b=>b.onclick=()=>showTab(b.dataset.goto));
- $('#heroPick').onclick=()=>{showTab('picker');pick()};$('#generateBtn').onclick=pick;
+ $('#heroPick').onclick=()=>{showTab('picker');pick()};$('#generateBtn').onclick=pick;$('#runBacktest')?.addEventListener('click',runBacktest);
  $('#addDrawBtn').onclick=$('#emptyAdd').onclick=()=>{const f=$('#drawForm');f.reset();$('#formError').textContent='';$('#drawDialog').showModal()};
  $('#drawForm').addEventListener('submit',e=>{if(e.submitter?.value!=='save')return;e.preventDefault();try{const front=parseNums($('#frontInput').value,5,35),back=parseNums($('#backInput').value,2,12);const issue=$('#drawIssue').value.trim(),date=$('#drawDate').value;if(!issue&&!date)throw Error('请填写期号或开奖日期');if(issue&&!/^\d{4,6}$/.test(issue))throw Error('期号请填写 4–6 位数字');const d={issue:issue||date.replaceAll('-',''),date,front,back};if(draws.some(x=>x.issue===d.issue))throw Error(`第 ${d.issue} 期已存在`);draws.unshift(d);draws.sort((a,b)=>b.issue.localeCompare(a.issue));save();$('#drawDialog').close();toast('开奖记录已保存')}catch(err){$('#formError').textContent=err.message}});
  $('#checkTicket').onclick=()=>{try{if(!draws.length)throw Error('请先导入开奖记录');const f=parseNums($('#myFront').value,5,35),b=parseNums($('#myBack').value,2,12),d=draws.find(x=>x.issue===$('#compareIssue').value);if(!d)throw Error('请选择对照期号');const fh=f.filter(n=>d.front.includes(n)).length,bh=b.filter(n=>d.back.includes(n)).length,tier=prizeTier(fh,bh);$('#matchResult').innerHTML=`<b class="${tier==='未中奖'?'no-win':'win'}">${tier}</b><span>前区命中 ${fh} 个 · 后区命中 ${bh} 个</span><small>按当前规则匹配奖级，奖金金额请以官方当期公布为准。</small>`}catch(err){$('#matchResult').textContent=err.message}};
