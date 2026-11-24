@@ -135,9 +135,14 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  }
  const ranked=Array.from({length:max},(_,i)=>i+1);
  if(mode==='random'){
-  let state=seed||1;
-  // Partial Fisher–Yates: only select the required 5/2 balls, not shuffle the full pool.
-  for(let i=0;i<count;i++){state=backtestHash(state);const j=i+(state%(ranked.length-i));[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
+  // Fast rejection sampling with a 32-bit bit mask; avoids allocating and shuffling a full pool.
+  let state=seed||1,mask=0,selected=[];
+  while(selected.length<count){
+   state=backtestHash(state);
+   const n=(state%max)+1,bit=1<<(n-1);
+   if(!(mask&bit)){mask|=bit;selected.push(n)}
+  }
+  return selected;
  }else{
   const score=mode==='hot'?counts:mode==='cold'?counts:gaps;
   ranked.sort((a,b)=>{
@@ -153,7 +158,9 @@ function backtestAccumulator(){
  return {front:0,back:0,zero:0,wins:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),tiers:Array(8).fill(0)};
 }
 function backtestAdd(acc,front,back,actual){
- const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length;
+ let f=0,b=0;
+ for(let i=0;i<front.length;i++)if(actual.front.includes(front[i]))f++;
+ for(let i=0;i<back.length;i++)if(actual.back.includes(back[i]))b++;
  const tier=prizeTier(f,b),tierIndex=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'].indexOf(tier);
  acc.front+=f;acc.back+=b;if(f===0&&b===0)acc.zero++;
  acc.frontDist[f]++;acc.backDist[b]++;acc.tiers[tierIndex]++;
