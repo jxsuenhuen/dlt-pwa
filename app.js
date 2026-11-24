@@ -140,10 +140,10 @@ function backtestNumbers(history,zone,count,method,seed){
 }
 function runBacktest(){
  const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
- const records=[...draws].filter(d=>/^\\d{5}$/.test(d.issue)&&d.date&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
+ const records=[...draws].filter(d=>/^\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
  const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
  const warmup=60,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
- if(n<1){output.textContent='至少需要61期具有日期的有效历史数据才能回测。';return}
+ if(n<1){output.textContent=`当前识别到 ${unique.length} 期有效记录，至少需要61期才能回测。`;return}
  const methods=[['random','模拟随机'],['hot','近60期高频'],['cold','近60期低频']];
  const results=methods.map(([key,label])=>({key,label,zero:0,front:0,back:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0)}));
  for(let i=unique.length-n;i<unique.length;i++){
