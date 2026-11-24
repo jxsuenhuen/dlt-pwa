@@ -1,4 +1,4 @@
-const CACHE = 'dlt-pwa-v10-backtest-v2-optimized-20261124';
+const CACHE = 'dlt-pwa-v11-backtest-v2-progress-20261124';
 const BASE = self.registration.scope;
 const SHELL = ['index.html', 'styles.css', 'app.js', 'manifest.json', 'icon.svg'];
 self.addEventListener('install', event => {
