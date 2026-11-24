@@ -123,6 +123,29 @@ function saveException(e){e.preventDefault();const date=$('#exceptionDate').valu
 function fillIssueSelect(){const e=$('#compareIssue');if(e)e.innerHTML=draws.map(d=>`<option value="${escapeHtml(d.issue)}">第 ${escapeHtml(d.issue)} 期 · ${d.front.map(fmt).join(' ')} + ${d.back.map(fmt).join(' ')}</option>`).join('')}
 function parseNums(s,count,max){const a=s.split(/[\s,，、]+/).filter(Boolean).map(x=>Number(x));if(a.length!==count||a.some(n=>!Number.isInteger(n)||n<1||n>max)||new Set(a).size!==a.length)throw Error(`请填写 ${count} 个不重复的 01–${fmt(max)} 号码`);return a.sort((x,y)=>x-y)}
 function randomSet(total,count){const a=Array.from({length:total},(_,i)=>i+1);for(let i=a.length-1;i>0;i--){const j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,count).sort((x,y)=>x-y)}
+let latestRandomTickets=[];
+const PICK_HISTORY_STORE='dlt-random-pick-history-v1';
+function renderRandomTickets(tickets){
+ const list=$('#multiPickList');if(!list)return;
+ list.innerHTML=tickets.map((t,i)=>`<article class="multi-pick-row"><div class="multi-pick-head"><b>第${i+1}注</b><span>大乐透 · 随机组合</span></div><div class="multi-pick-zone"><small>前区</small><span class="balls front-balls">${t.front.map(n=>'<i>'+fmt(n)+'</i>').join('')}</span></div><div class="multi-pick-zone"><small>后区</small><span class="balls back-balls">${t.back.map(n=>'<i>'+fmt(n)+'</i>').join('')}</span></div></article>`).join('');
+ const actions=$('#pickActions');if(actions)actions.hidden=!tickets.length;
+}
+function readPickHistory(){try{const x=JSON.parse(localStorage.getItem(PICK_HISTORY_STORE)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
+function renderRandomHistory(){
+ const box=$('#pickHistoryList');if(!box)return;
+ const history=readPickHistory();
+ box.innerHTML=history.length?history.slice(0,8).map((entry,i)=>`<div class="pick-history-item"><div><b>${new Date(entry.time).toLocaleString('zh-CN')}</b><small>${entry.tickets.length} 注</small></div><button type="button" class="soft-btn pick-history-copy" data-history-index="${i}">复制</button><div class="pick-history-numbers">${entry.tickets.map((t,j)=>`<span>第${j+1}注：${t.front.map(fmt).join(' ')} + ${t.back.map(fmt).join(' ')}</span>`).join('')}</div></div>`).join(''):'<p class="fine-print">暂时没有生成记录。</p>';
+ box.querySelectorAll('[data-history-index]').forEach(btn=>btn.onclick=()=>{const entry=readPickHistory()[Number(btn.dataset.historyIndex)];if(entry)copyTicketSet(entry.tickets)});
+}
+function ticketText(tickets){return tickets.map((t,i)=>`第${i+1}注  前区：${t.front.map(fmt).join(' ')}  后区：${t.back.map(fmt).join(' ')}`).join('\\n')}
+async function copyTicketSet(tickets){try{await navigator.clipboard.writeText(ticketText(tickets));toast('号码已复制')}catch{const area=document.createElement('textarea');area.value=ticketText(tickets);document.body.append(area);area.select();const ok=document.execCommand('copy');area.remove();toast(ok?'号码已复制':'复制失败，请手动选择号码')}}
+function exportRandomTickets(){
+ if(!latestRandomTickets.length)return;
+ const rows=[['注数','前区号码','后区号码'],...latestRandomTickets.map((t,i)=>[i+1,t.front.map(fmt).join(' '),t.back.map(fmt).join(' ')])];
+ const csv='\\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\\r\\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
+ a.href=url;a.download='大乐透随机选号_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);toast('已导出，可用 Excel 打开');
+}
 function pick(){
  const count=Math.max(1,Math.min(10,Number($('#ticketCount')?.value||1))),tickets=[],seen=new Set();
  let attempts=0;
@@ -130,8 +153,10 @@ function pick(){
   const f=randomSet(35,5),b=randomSet(12,2),key=f.join('-')+'|'+b.join('-');
   if(!seen.has(key)){seen.add(key);tickets.push({front:f,back:b})}
  }
+ latestRandomTickets=tickets;
  const first=tickets[0];$('#frontPicks').innerHTML=first.front.map(n=>`<i>${fmt(n)}</i>`).join('');$('#backPicks').innerHTML=first.back.map(n=>`<i>${fmt(n)}</i>`).join('');
- const list=$('#multiPickList');if(list)list.innerHTML=tickets.map((t,i)=>'<div class="multi-pick-row"><b>第'+(i+1)+'注</b><span class="balls front-balls">'+t.front.map(n=>'<i>'+fmt(n)+'</i>').join('')+'</span><span class="balls back-balls">'+t.back.map(n=>'<i>'+fmt(n)+'</i>').join('')+'</span></div>').join('');
+ renderRandomTickets(tickets);
+ try{const history=readPickHistory();history.unshift({time:new Date().toISOString(),tickets});localStorage.setItem(PICK_HISTORY_STORE,JSON.stringify(history.slice(0,50)));renderRandomHistory()}catch(e){console.warn('选号记录保存失败',e)}
 }
 
 function backtestHash(seed){seed|=0;seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return seed>>>0}
@@ -289,7 +314,7 @@ function setupCalculator(){for(let n=5;n<=35;n++)$('#calcFront').insertAdjacentH
 function prizeTier(f,b){if(f===5&&b===2)return'一等奖';if(f===5&&b===1)return'二等奖';if((f===5&&b===0)||(f===4&&b===2))return'三等奖';if(f===4&&b===1)return'四等奖';if((f===4&&b===0)||(f===3&&b===2))return'五等奖';if((f===3&&b===1)||(f===2&&b===2))return'六等奖';if((f===3&&b===0)||(f===2&&b===1)||(f===1&&b===2)||(f===0&&b===2))return'七等奖';return'未中奖'}
 function bind(){
  $$('.tab').forEach(t=>t.onclick=()=>showTab(t.dataset.tab));$$('[data-goto]').forEach(b=>b.onclick=()=>showTab(b.dataset.goto));
- $('#heroPick').onclick=()=>{showTab('picker');pick()};$('#generateBtn').onclick=pick;$('#runBacktest')?.addEventListener('click',runBacktest);
+ $('#heroPick').onclick=()=>{showTab('picker');pick()};$('#generateBtn').onclick=pick;$('#copyPicksBtn')?.addEventListener('click',()=>copyTicketSet(latestRandomTickets));$('#exportPicksBtn')?.addEventListener('click',exportRandomTickets);renderRandomHistory();$('#runBacktest')?.addEventListener('click',runBacktest);
  $('#addDrawBtn').onclick=$('#emptyAdd').onclick=()=>{const f=$('#drawForm');f.reset();$('#formError').textContent='';$('#drawDialog').showModal()};
  $('#drawForm').addEventListener('submit',e=>{if(e.submitter?.value!=='save')return;e.preventDefault();try{const front=parseNums($('#frontInput').value,5,35),back=parseNums($('#backInput').value,2,12);const issue=$('#drawIssue').value.trim(),date=$('#drawDate').value;if(!issue&&!date)throw Error('请填写期号或开奖日期');if(issue&&!/^\d{4,6}$/.test(issue))throw Error('期号请填写 4–6 位数字');const d={issue:issue||date.replaceAll('-',''),date,front,back};if(draws.some(x=>x.issue===d.issue))throw Error(`第 ${d.issue} 期已存在`);draws.unshift(d);draws.sort((a,b)=>b.issue.localeCompare(a.issue));save();$('#drawDialog').close();toast('开奖记录已保存')}catch(err){$('#formError').textContent=err.message}});
  $('#checkTicket').onclick=()=>{try{if(!draws.length)throw Error('请先导入开奖记录');const f=parseNums($('#myFront').value,5,35),b=parseNums($('#myBack').value,2,12),d=draws.find(x=>x.issue===$('#compareIssue').value);if(!d)throw Error('请选择对照期号');const fh=f.filter(n=>d.front.includes(n)).length,bh=b.filter(n=>d.back.includes(n)).length,tier=prizeTier(fh,bh);$('#matchResult').innerHTML=`<b class="${tier==='未中奖'?'no-win':'win'}">${tier}</b><span>前区命中 ${fh} 个 · 后区命中 ${bh} 个</span><small>按当前规则匹配奖级，奖金金额请以官方当期公布为准。</small>`}catch(err){$('#matchResult').textContent=err.message}};
