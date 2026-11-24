@@ -221,7 +221,7 @@ async function runBacktest(){
    const back=backtestNumbers(previous,'back',2,method.backMode,seed^0x2468ace0,method.window);
    backtestAdd(method.acc,front,back,actual);
    const phaseIndex=Math.min(phaseCount-1,Math.floor((i-(unique.length-n))*phaseCount/n));
-   backtestAdd(phaseAccs[index],front,back,actual);
+   backtestAdd(phaseAccs[index][phaseIndex],front,back,actual);
   });
   for(let rep=0;rep<randomRuns;rep++){
    const seed=backtestHash((issueSeed^Math.imul(rep+1,0x45d9f3b))>>>0);
