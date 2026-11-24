@@ -130,7 +130,7 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  const max=zone==='front'?35:12,counts=Array(max+1).fill(0),gaps=Array(max+1).fill(windowSize+1);
  const recent=history.slice(-windowSize);
  recent.forEach(d=>d[zone].forEach(n=>counts[n]++));
- for(let i=recent.length-1,distance=0;i>=0;i--,distance--){
+ for(let i=recent.length-1,distance=0;i>=0;i--,distance++){
   for(const n of recent[i][zone])if(gaps[n]===windowSize+1)gaps[n]=distance;
  }
  const ranked=Array.from({length:max},(_,i)=>i+1);
@@ -194,17 +194,17 @@ function runBacktest(){
   });
  }
  const tierNames=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'];
- const averageAcc=key=>{
+ const averageAcc=()=>{
   const out=backtestAccumulator();
-  randomAccs.forEach(acc=>{
-   out[key]+=acc[key]/randomRuns;
+  ['front','back','zero','wins'].forEach(key=>{
+   out[key]=randomAccs.reduce((sum,acc)=>sum+acc[key]/randomRuns,0);
   });
   ['frontDist','backDist','tiers'].forEach(group=>out[group].forEach((_,i)=>{
    out[group][i]=randomAccs.reduce((sum,acc)=>sum+acc[group][i]/randomRuns,0);
   }));
   return out;
  };
- const random=averageAcc('front'),randomWins=random.wins/randomRuns;
+ const random=averageAcc(),randomWins=random.wins;
  const randomFrontCI=[backtestQuantile(randomAccs.map(x=>x.front/n),.025),backtestQuantile(randomAccs.map(x=>x.front/n),.975)];
  const randomBackCI=[backtestQuantile(randomAccs.map(x=>x.back/n),.025),backtestQuantile(randomAccs.map(x=>x.back/n),.975)];
  const fmtCount=x=>Number.isInteger(x)?String(x):x.toFixed(1);
