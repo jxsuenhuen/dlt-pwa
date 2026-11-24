@@ -136,11 +136,11 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  const ranked=Array.from({length:max},(_,i)=>i+1);
  if(mode==='random'){
   // Fast rejection sampling with a 32-bit bit mask; avoids allocating and shuffling a full pool.
-  let state=seed||1,mask=0,selected=[];
+  let state=seed||1,maskLo=0,maskHi=0,selected=[];
   while(selected.length<count){
    state=backtestHash(state);
-   const n=(state%max)+1,bit=1<<(n-1);
-   if(!(mask&bit)){mask|=bit;selected.push(n)}
+   const n=(state%max)+1,high=n>32,bit=1<<((n-1)&31),mask=high?maskHi:maskLo;
+   if(!(mask&bit)){if(high)maskHi|=bit;else maskLo|=bit;selected.push(n)}
   }
   return selected;
  }else{
