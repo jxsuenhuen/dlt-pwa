@@ -1,4 +1,4 @@
-const CACHE = 'dlt-pwa-v13-backtest-v4-phases-multipicks-20261124';
+const CACHE = 'dlt-pwa-v14-picker-cards-history-20261124';
 const BASE = self.registration.scope;
 const SHELL = ['index.html', 'styles.css', 'app.js', 'manifest.json', 'icon.svg'];
 self.addEventListener('install', event => {
