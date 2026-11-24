@@ -141,7 +141,7 @@ function backtestNumbers(history,zone,count,method,seed){
 }
 function runBacktest(){
  const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
- const records=[...draws].filter(d=>/^\\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
+ const records=[...draws].filter(d=>/^\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
  const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
  const warmup=60,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
  if(n<1){output.textContent=`当前识别到 ${unique.length} 期有效记录，至少需要61期才能回测。`;return}
