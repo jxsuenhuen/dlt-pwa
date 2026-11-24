@@ -126,51 +126,105 @@ function randomSet(total,count){const a=Array.from({length:total},(_,i)=>i+1);fo
 function pick(){const f=randomSet(35,5),b=randomSet(12,2);$('#frontPicks').innerHTML=f.map(n=>`<i>${fmt(n)}</i>`).join('');$('#backPicks').innerHTML=b.map(n=>`<i>${fmt(n)}</i>`).join('')}
 
 function backtestHash(seed){seed|=0;seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return seed>>>0}
-function backtestNumbers(history,zone,count,method,seed){
- const max=zone==='front'?35:12,counts=Array(max+1).fill(0);
- for(const d of history.slice(-60))for(const n of d[zone])counts[n]++;
+function backtestNumbers(history,zone,count,mode,seed,windowSize){
+ const max=zone==='front'?35:12,counts=Array(max+1).fill(0),gaps=Array(max+1).fill(windowSize+1);
+ const recent=history.slice(-windowSize);
+ recent.forEach(d=>d[zone].forEach(n=>counts[n]++));
+ for(let i=recent.length-1,distance=0;i>=0;i--,distance++){
+  for(const n of recent[i][zone])if(gaps[n]===windowSize+1)gaps[n]=distance;
+ }
  const ranked=Array.from({length:max},(_,i)=>i+1);
- if(method==='random'){
+ if(mode==='random'){
   let state=seed||1;
   for(let i=ranked.length-1;i>0;i--){state=backtestHash(state);const j=state%(i+1);[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
  }else{
-  const direction=method==='hybrid'?(zone==='front'?'hot':'cold'):method;
-  const tieBreak=n=>backtestHash(((seed>>>0)^(Math.imul(n,0x9e3779b1)))>>>0);
-  ranked.sort((a,b)=>(direction==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(tieBreak(a)-tieBreak(b))||(a-b));
+  const score=mode==='hot'?counts:mode==='cold'?counts:gaps;
+  ranked.sort((a,b)=>{
+   const diff=mode==='hot'?score[b]-score[a]:score[a]-score[b];
+   const tieA=backtestHash(((seed>>>0)^(Math.imul(a,0x9e3779b1)))>>>0);
+   const tieB=backtestHash(((seed>>>0)^(Math.imul(b,0x9e3779b1)))>>>0);
+   return diff||(tieA-tieB)||(a-b);
+  });
  }
  return ranked.slice(0,count).sort((a,b)=>a-b);
+}
+function backtestAccumulator(){
+ return {front:0,back:0,zero:0,wins:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),tiers:Array(8).fill(0)};
+}
+function backtestAdd(acc,front,back,actual){
+ const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length;
+ const tier=prizeTier(f,b),tierIndex=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'].indexOf(tier);
+ acc.front+=f;acc.back+=b;if(f===0&&b===0)acc.zero++;
+ acc.frontDist[f]++;acc.backDist[b]++;acc.tiers[tierIndex]++;
+ if(tier!=='未中奖')acc.wins++;
+}
+function backtestQuantile(values,q){
+ const sorted=[...values].sort((a,b)=>a-b),position=(sorted.length-1)*q,lo=Math.floor(position),hi=Math.ceil(position);
+ return sorted[lo]+(sorted[hi]-sorted[lo])*(position-lo);
 }
 function runBacktest(){
  const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
  const records=[...draws].filter(d=>/^\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
  const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
- const warmup=60,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
- if(n<1){output.textContent=`当前识别到 ${unique.length} 期有效记录，至少需要61期才能回测。`;return}
- const methods=[['random','模拟随机'],['hot','近60期高频'],['cold','近60期低频'],['hybrid','前区高频＋后区低频']];
- const tierNames=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'];
- const results=methods.map(([key,label])=>({key,label,zero:0,front:0,back:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),totalDist:Array(8).fill(0),tiers:Object.fromEntries(tierNames.map(x=>[x,0]))}));
+ const warmup=120,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
+ if(n<1){output.textContent='当前识别到 '+unique.length+' 期有效记录；V2最多使用近120期作为计算窗口，至少需要121期才能回测。';return}
+ const windows=[30,60,120],modes=[
+  {key:'hot',label:'高频',front:'hot',back:'hot'},
+  {key:'cold',label:'低频',front:'cold',back:'cold'},
+  {key:'hot-cold',label:'前区高频＋后区低频',front:'hot',back:'cold'},
+  {key:'cold-hot',label:'前区低频＋后区高频',front:'cold',back:'hot'},
+  {key:'overdue',label:'遗漏优先',front:'overdue',back:'overdue'}
+ ];
+ const methods=[];
+ windows.forEach(w=>modes.forEach(m=>methods.push({label:m.label+'（近'+w+'期）',window:w,frontMode:m.front,backMode:m.back,acc:backtestAccumulator()})));
+ const randomRuns=100,randomAccs=Array.from({length:randomRuns},()=>backtestAccumulator());
  for(let i=unique.length-n;i<unique.length;i++){
-  const previous=unique.slice(0,i),actual=unique[i],seed=Number(actual.issue)||i;
-  for(const result of results){
-   const front=backtestNumbers(previous,'front',5,result.key,seed*31+7);
-   const back=backtestNumbers(previous,'back',2,result.key,seed*37+11);
-   const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length,total=f+b;
-   result.front+=f;result.back+=b;result.frontDist[f]++;result.backDist[b]++;result.totalDist[total]++;
-   if(!f&&!b)result.zero++;
-   result.tiers[prizeTier(f,b)]++;
-  }
+  const previous=unique.slice(0,i),actual=unique[i],issueSeed=(Number(actual.issue)||i)>>>0;
+  methods.forEach((method,index)=>{
+   const seed=backtestHash((issueSeed^Math.imul(method.window,31)^Math.imul(index+1,7919))>>>0);
+   const front=backtestNumbers(previous,'front',5,method.frontMode,seed^0x13579bdf,method.window);
+   const back=backtestNumbers(previous,'back',2,method.backMode,seed^0x2468ace0,method.window);
+   backtestAdd(method.acc,front,back,actual);
+  });
+  randomAccs.forEach((acc,rep)=>{
+   const seed=backtestHash((issueSeed^Math.imul(rep+1,0x45d9f3b))>>>0);
+   const front=backtestNumbers(previous,'front',5,'random',seed^0x13579bdf,60);
+   const back=backtestNumbers(previous,'back',2,'random',seed^0x2468ace0,60);
+   backtestAdd(acc,front,back,actual);
+  });
  }
- const th='<tr><th style="text-align:left">选号方法</th><th>前区均命中</th><th>后区均命中</th><th>全0期数</th><th>模拟中奖期数</th></tr>';
- const mainRows=results.map(r=>{const wins=tierNames.slice(0,7).reduce((sum,t)=>sum+r.tiers[t],0);return '<tr><td>'+r.label+'</td><td>'+(r.front/n).toFixed(3)+'</td><td>'+(r.back/n).toFixed(3)+'</td><td>'+r.zero+'/'+n+'</td><td>'+wins+'/'+n+'</td></tr>'}).join('');
- const distributionHead='<tr><th style="text-align:left">选号方法</th>'+[0,1,2,3,4,5].map(x=>'<th>前区命中'+x+'</th>').join('')+'</tr>';
- const frontRows=results.map(r=>'<tr><td>'+r.label+'</td>'+r.frontDist.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
+ const tierNames=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'];
+ const averageAcc=()=>{
+  const out=backtestAccumulator();
+  ['front','back','zero','wins'].forEach(key=>{
+   out[key]=randomAccs.reduce((sum,acc)=>sum+acc[key]/randomRuns,0);
+  });
+  ['frontDist','backDist','tiers'].forEach(group=>out[group].forEach((_,i)=>{
+   out[group][i]=randomAccs.reduce((sum,acc)=>sum+acc[group][i]/randomRuns,0);
+  }));
+  return out;
+ };
+ const random=averageAcc(),randomWins=random.wins;
+ const randomFrontCI=[backtestQuantile(randomAccs.map(x=>x.front/n),.025),backtestQuantile(randomAccs.map(x=>x.front/n),.975)];
+ const randomBackCI=[backtestQuantile(randomAccs.map(x=>x.back/n),.025),backtestQuantile(randomAccs.map(x=>x.back/n),.975)];
+ const fmtCount=x=>Number.isInteger(x)?String(x):x.toFixed(1);
+ const fmtRate=x=>(x/n).toFixed(3);
+ const all=[{label:'模拟随机（100次蒙特卡洛均值）',window:'—',acc:random,random:true},...methods];
+ const head='<tr><th style="text-align:left">选号方法</th><th>前区均命中</th><th>后区均命中</th><th>全0期数</th><th>模拟中奖期数</th></tr>';
+ const rows=all.map(r=>{
+  const a=r.acc,zero=r.random?randomAccs.reduce((sum,x)=>sum+x.zero/randomRuns,0):a.zero;
+  const wins=r.random?randomWins:a.wins;
+  return '<tr><td>'+r.label+'</td><td>'+fmtRate(a.front)+'</td><td>'+fmtRate(a.back)+'</td><td>'+fmtCount(zero)+'/'+n+'</td><td>'+fmtCount(wins)+'/'+n+'</td></tr>';
+ }).join('');
+ const distHead='<tr><th style="text-align:left">选号方法</th>'+[0,1,2,3,4,5].map(x=>'<th>前区命中'+x+'</th>').join('')+'</tr>';
+ const distRows=all.map(r=>'<tr><td>'+r.label+'</td>'+r.acc.frontDist.map(fmtCount).map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
  const backHead='<tr><th style="text-align:left">选号方法</th><th>后区命中0</th><th>后区命中1</th><th>后区命中2</th></tr>';
- const backRows=results.map(r=>'<tr><td>'+r.label+'</td>'+r.backDist.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
+ const backRows=all.map(r=>'<tr><td>'+r.label+'</td>'+r.acc.backDist.map(fmtCount).map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
  const tierHead='<tr><th style="text-align:left">选号方法</th>'+tierNames.slice(0,7).map(x=>'<th>'+x+'</th>').join('')+'</tr>';
- const tierRows=results.map(r=>'<tr><td>'+r.label+'</td>'+tierNames.slice(0,7).map(x=>'<td>'+r.tiers[x]+'</td>').join('')+'</tr>').join('');
- const style='style="border-collapse:collapse;width:100%;min-width:620px;text-align:center"';
- const wrap=content=>'<div style="overflow-x:auto;margin:10px 0 18px"><table '+style+'>'+content+'</table></div>';
- output.innerHTML='<p>已回测最近 <b>'+n+'</b> 期（每种方法每期1注；前置60期只用于计算号码频次）。</p><h4>总体表现</h4>'+wrap(th+mainRows)+'<h4>前区命中分布（各档次数）</h4>'+wrap(distributionHead+frontRows)+'<h4>后区命中分布（各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">理论随机期望：前区约0.714个/注、后区约0.333个/注。高频/低频仅按每期开奖前最近60期统计；组合策略为前区高频、后区低频。奖级按工具当前内置规则计数，不计算奖金，模拟结果不代表未来预测能力或真实中奖概率。</p>';
+ const tierRows=all.map(r=>'<tr><td>'+r.label+'</td>'+r.acc.tiers.slice(0,7).map(fmtCount).map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
+ const tableStyle='style="border-collapse:collapse;width:100%;min-width:760px;text-align:center"';
+ const wrap=content=>'<div style="overflow-x:auto;margin:10px 0 18px"><table '+tableStyle+'>'+content+'</table></div>';
+ output.innerHTML='<p>V2 已回测最近 <b>'+n+'</b> 期；每种策略每期生成1注，严格只使用当期之前的开奖数据。随机基准额外进行 <b>'+randomRuns+'</b> 轮蒙特卡洛模拟。</p><h4>总体表现（含不同滚动窗口）</h4>'+wrap(head+rows)+'<h4>前区命中分布（平均各档次数）</h4>'+wrap(distHead+distRows)+'<h4>后区命中分布（平均各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">随机基准前区平均命中 '+fmtRate(random.front)+'，95%模拟区间 '+randomFrontCI[0].toFixed(3)+'–'+randomFrontCI[1].toFixed(3)+'；后区平均命中 '+fmtRate(random.back)+'，95%模拟区间 '+randomBackCI[0].toFixed(3)+'–'+randomBackCI[1].toFixed(3)+'。窗口分别为近30、60、120期；遗漏优先按窗口内距上次出现的期数排序。模拟中奖期数仅按当前内置奖级规则统计，不计算奖金。历史频率、遗漏和回测结果均不能提高或证明未来中奖概率。</p>';
 }
 function choose(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);let x=1;for(let i=1;i<=k;i++)x=x*(n-k+i)/i;return Math.round(x)}
 function setupCalculator(){for(let n=5;n<=35;n++)$('#calcFront').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===5?'selected':''}>${n} 个</option>`);for(let n=2;n<=12;n++)$('#calcBack').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===2?'selected':''}>${n} 个</option>`);const calc=()=>{let lines=choose(+$(`#calcFront`).value,5)*choose(+$(`#calcBack`).value,2);let cost=lines*(2+($('#calcAddOn').checked?1:0));$('#calcLines').textContent=`${lines.toLocaleString('zh-CN')} 注`,$('#calcCost').textContent=`${cost.toLocaleString('zh-CN')} 元`};['calcFront','calcBack','calcAddOn'].forEach(id=>$('#'+id).addEventListener('change',calc));calc()}
