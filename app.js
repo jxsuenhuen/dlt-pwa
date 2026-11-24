@@ -137,12 +137,12 @@ function renderRandomHistory(){
  box.innerHTML=history.length?history.slice(0,8).map((entry,i)=>`<div class="pick-history-item"><div><b>${new Date(entry.time).toLocaleString('zh-CN')}</b><small>${entry.tickets.length} 注</small></div><button type="button" class="soft-btn pick-history-copy" data-history-index="${i}">复制</button><div class="pick-history-numbers">${entry.tickets.map((t,j)=>`<span>第${j+1}注：${t.front.map(fmt).join(' ')} + ${t.back.map(fmt).join(' ')}</span>`).join('')}</div></div>`).join(''):'<p class="fine-print">暂时没有生成记录。</p>';
  box.querySelectorAll('[data-history-index]').forEach(btn=>btn.onclick=()=>{const entry=readPickHistory()[Number(btn.dataset.historyIndex)];if(entry)copyTicketSet(entry.tickets)});
 }
-function ticketText(tickets){return tickets.map((t,i)=>`第${i+1}注  前区：${t.front.map(fmt).join(' ')}  后区：${t.back.map(fmt).join(' ')}`).join('\\n')}
+function ticketText(tickets){return tickets.map((t,i)=>`第${i+1}注  前区：${t.front.map(fmt).join(' ')}  后区：${t.back.map(fmt).join(' ')}`).join('\n')}
 async function copyTicketSet(tickets){try{await navigator.clipboard.writeText(ticketText(tickets));toast('号码已复制')}catch{const area=document.createElement('textarea');area.value=ticketText(tickets);document.body.append(area);area.select();const ok=document.execCommand('copy');area.remove();toast(ok?'号码已复制':'复制失败，请手动选择号码')}}
 function exportRandomTickets(){
  if(!latestRandomTickets.length)return;
  const rows=[['注数','前区号码','后区号码'],...latestRandomTickets.map((t,i)=>[i+1,t.front.map(fmt).join(' '),t.back.map(fmt).join(' ')])];
- const csv='\\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\\r\\n');
+ const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
  a.href=url;a.download='大乐透随机选号_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);toast('已导出，可用 Excel 打开');
 }
