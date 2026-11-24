@@ -135,13 +135,18 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  }
  const ranked=Array.from({length:max},(_,i)=>i+1);
  if(mode==='random'){
-  let state=seed||1;
-  // Partial Fisher–Yates: only select the required 5/2 balls, not shuffle the full pool.
-  for(let i=0;i<count;i++){state=backtestHash(state);const j=i+(state%(ranked.length-i));[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
+  // Fast rejection sampling with a 32-bit bit mask; avoids allocating and shuffling a full pool.
+  let state=seed||1,maskLo=0,maskHi=0,selected=[];
+  while(selected.length<count){
+   state=backtestHash(state);
+   const n=(state%max)+1,high=n>32,bit=1<<((n-1)&31),mask=high?maskHi:maskLo;
+   if(!(mask&bit)){if(high)maskHi|=bit;else maskLo|=bit;selected.push(n)}
+  }
+  return selected;
  }else{
   const score=mode==='hot'?counts:mode==='cold'?counts:gaps;
   ranked.sort((a,b)=>{
-   const diff=mode==='hot'?score[b]-score[a]:score[a]-score[b];
+   const diff=mode==='hot'?score[b]-score[a]:mode==='overdue'?score[b]-score[a]:score[a]-score[b];
    const tieA=backtestHash(((seed>>>0)^(Math.imul(a,0x9e3779b1)))>>>0);
    const tieB=backtestHash(((seed>>>0)^(Math.imul(b,0x9e3779b1)))>>>0);
    return diff||(tieA-tieB)||(a-b);
@@ -149,11 +154,28 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  }
  return ranked.slice(0,count).sort((a,b)=>a-b);
 }
+function backtestRandomHits(seed,drawCount,population,successes){
+ let state=seed||1,hits=0,remaining=population,winning=successes;
+ for(let i=0;i<drawCount;i++){
+  state=backtestHash(state);
+  if(state%remaining<winning){hits++;winning--;}
+  remaining--;
+ }
+ return hits;
+}
+function backtestAddHits(acc,f,b){
+ const tier=prizeTier(f,b),tierIndex=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'].indexOf(tier);
+ acc.front+=f;acc.back+=b;if(f===0&&b===0)acc.zero++;
+ acc.frontDist[f]++;acc.backDist[b]++;acc.tiers[tierIndex]++;
+ if(tier!=='未中奖')acc.wins++;
+}
 function backtestAccumulator(){
  return {front:0,back:0,zero:0,wins:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),tiers:Array(8).fill(0)};
 }
 function backtestAdd(acc,front,back,actual){
- const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length;
+ let f=0,b=0;
+ for(let i=0;i<front.length;i++)if(actual.front.includes(front[i]))f++;
+ for(let i=0;i<back.length;i++)if(actual.back.includes(back[i]))b++;
  const tier=prizeTier(f,b),tierIndex=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'].indexOf(tier);
  acc.front+=f;acc.back+=b;if(f===0&&b===0)acc.zero++;
  acc.frontDist[f]++;acc.backDist[b]++;acc.tiers[tierIndex]++;
@@ -180,7 +202,7 @@ async function runBacktest(){
  ];
  const methods=[];
  windows.forEach(w=>modes.forEach(m=>methods.push({label:m.label+'（近'+w+'期）',window:w,frontMode:m.front,backMode:m.back,acc:backtestAccumulator()})));
- const randomRuns=100,randomAccs=Array.from({length:randomRuns},()=>backtestAccumulator());
+ const randomRuns=1000,randomAccs=Array.from({length:randomRuns},()=>backtestAccumulator());
  for(let i=unique.length-n;i<unique.length;i++){
   const previous=unique.slice(0,i),actual=unique[i],issueSeed=(Number(actual.issue)||i)>>>0;
   methods.forEach((method,index)=>{
@@ -189,12 +211,13 @@ async function runBacktest(){
    const back=backtestNumbers(previous,'back',2,method.backMode,seed^0x2468ace0,method.window);
    backtestAdd(method.acc,front,back,actual);
   });
-  randomAccs.forEach((acc,rep)=>{
+  for(let rep=0;rep<randomRuns;rep++){
    const seed=backtestHash((issueSeed^Math.imul(rep+1,0x45d9f3b))>>>0);
-   const front=backtestNumbers(previous,'front',5,'random',seed^0x13579bdf,60);
-   const back=backtestNumbers(previous,'back',2,'random',seed^0x2468ace0,60);
-   backtestAdd(acc,front,back,actual);
-  });
+   // Exact equivalent hit-count simulation: hypergeometric sampling avoids generating full tickets.
+   const frontHits=backtestRandomHits(seed^0x13579bdf,5,35,5);
+   const backHits=backtestRandomHits(seed^0x2468ace0,2,12,2);
+   backtestAddHits(randomAccs[rep],frontHits,backHits);
+  }
   if((i-(unique.length-n)+1)%25===0){
    output.textContent='正在回测：'+Math.min(i-(unique.length-n)+1,n)+' / '+n+' 期…';
    await new Promise(resolve=>setTimeout(resolve,0));
@@ -214,9 +237,17 @@ async function runBacktest(){
  const random=averageAcc(),randomWins=random.wins;
  const randomFrontCI=[backtestQuantile(randomAccs.map(x=>x.front/n),.025),backtestQuantile(randomAccs.map(x=>x.front/n),.975)];
  const randomBackCI=[backtestQuantile(randomAccs.map(x=>x.back/n),.025),backtestQuantile(randomAccs.map(x=>x.back/n),.975)];
+ const empiricalP=(key,value)=>((randomAccs.filter(x=>x[key]>=value).length+1)/(randomRuns+1));
+ const fmtP=p=>p<0.001?'<0.001':p.toFixed(3);
+ const delta=x=>(x>=0?'+':'')+x.toFixed(3);
+ const comparisonHead='<tr><th style="text-align:left">选号方法</th><th>前区均命中差值</th><th>单侧P值</th><th>后区均命中差值</th><th>单侧P值</th><th>中奖期数差值</th><th>单侧P值</th></tr>';
+ const comparisonRows=methods.map(r=>{
+  const a=r.acc;
+  return '<tr><td>'+r.label+'</td><td>'+delta((a.front-random.front)/n)+'</td><td>'+fmtP(empiricalP('front',a.front))+'</td><td>'+delta((a.back-random.back)/n)+'</td><td>'+fmtP(empiricalP('back',a.back))+'</td><td>'+delta(a.wins-randomWins)+'</td><td>'+fmtP(empiricalP('wins',a.wins))+'</td></tr>';
+ }).join('');
  const fmtCount=x=>Number.isInteger(x)?String(x):x.toFixed(1);
  const fmtRate=x=>(x/n).toFixed(3);
- const all=[{label:'模拟随机（100次蒙特卡洛均值）',window:'—',acc:random,random:true},...methods];
+ const all=[{label:'模拟随机（1000次蒙特卡洛均值）',window:'—',acc:random,random:true},...methods];
  const head='<tr><th style="text-align:left">选号方法</th><th>前区均命中</th><th>后区均命中</th><th>全0期数</th><th>模拟中奖期数</th></tr>';
  const rows=all.map(r=>{
   const a=r.acc,zero=r.random?randomAccs.reduce((sum,x)=>sum+x.zero/randomRuns,0):a.zero;
@@ -231,7 +262,7 @@ async function runBacktest(){
  const tierRows=all.map(r=>'<tr><td>'+r.label+'</td>'+r.acc.tiers.slice(0,7).map(fmtCount).map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
  const tableStyle='style="border-collapse:collapse;width:100%;min-width:760px;text-align:center"';
  const wrap=content=>'<div style="overflow-x:auto;margin:10px 0 18px"><table '+tableStyle+'>'+content+'</table></div>';
- output.innerHTML='<p>V2 已回测最近 <b>'+n+'</b> 期；每种策略每期生成1注，严格只使用当期之前的开奖数据。随机基准额外进行 <b>'+randomRuns+'</b> 轮蒙特卡洛模拟。</p><h4>总体表现（含不同滚动窗口）</h4>'+wrap(head+rows)+'<h4>前区命中分布（平均各档次数）</h4>'+wrap(distHead+distRows)+'<h4>后区命中分布（平均各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">随机基准前区平均命中 '+fmtRate(random.front)+'，95%模拟区间 '+randomFrontCI[0].toFixed(3)+'–'+randomFrontCI[1].toFixed(3)+'；后区平均命中 '+fmtRate(random.back)+'，95%模拟区间 '+randomBackCI[0].toFixed(3)+'–'+randomBackCI[1].toFixed(3)+'。窗口分别为近30、60、120期；遗漏优先按窗口内距上次出现的期数排序。模拟中奖期数仅按当前内置奖级规则统计，不计算奖金。历史频率、遗漏和回测结果均不能提高或证明未来中奖概率。</p>';
+ output.innerHTML='<p>V3 已回测最近 <b>'+n+'</b> 期；每种策略每期生成1注，严格只使用当期之前的开奖数据。随机基准额外进行 <b>'+randomRuns+'</b> 轮蒙特卡洛模拟。</p><h4>总体表现（含不同滚动窗口）</h4>'+wrap(head+rows)+'<h4>策略相对随机基准（单侧蒙特卡洛检验）</h4>'+wrap(comparisonHead+comparisonRows)+'<p style="font-size:13px;color:#64748b">差值为策略减去随机基准；P值估计随机选号达到或超过该策略表现的比例，越小仅表示本次样本中的相对表现越少见，不代表未来优势。15种策略同时比较，未进行多重检验校正。</p>'+'<h4>前区命中分布（平均各档次数）</h4>'+wrap(distHead+distRows)+'<h4>后区命中分布（平均各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">随机基准前区平均命中 '+fmtRate(random.front)+'，95%模拟区间 '+randomFrontCI[0].toFixed(3)+'–'+randomFrontCI[1].toFixed(3)+'；后区平均命中 '+fmtRate(random.back)+'，95%模拟区间 '+randomBackCI[0].toFixed(3)+'–'+randomBackCI[1].toFixed(3)+'。窗口分别为近30、60、120期；遗漏优先选择窗口内距上次出现期数较大的号码。模拟中奖期数仅按当前内置奖级规则统计，不计算奖金。历史频率、遗漏和回测结果均不能提高或证明未来中奖概率。</p>';
  runButton.disabled=false;runButton.dataset.running='';
 }
 function choose(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);let x=1;for(let i=1;i<=k;i++)x=x*(n-k+i)/i;return Math.round(x)}
