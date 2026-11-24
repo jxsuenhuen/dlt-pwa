@@ -154,6 +154,21 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  }
  return ranked.slice(0,count).sort((a,b)=>a-b);
 }
+function backtestRandomHits(seed,drawCount,population,successes){
+ let state=seed||1,hits=0,remaining=population,winning=successes;
+ for(let i=0;i<drawCount;i++){
+  state=backtestHash(state);
+  if(state%remaining<winning){hits++;winning--;}
+  remaining--;
+ }
+ return hits;
+}
+function backtestAddHits(acc,f,b){
+ const tier=prizeTier(f,b),tierIndex=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'].indexOf(tier);
+ acc.front+=f;acc.back+=b;if(f===0&&b===0)acc.zero++;
+ acc.frontDist[f]++;acc.backDist[b]++;acc.tiers[tierIndex]++;
+ if(tier!=='未中奖')acc.wins++;
+}
 function backtestAccumulator(){
  return {front:0,back:0,zero:0,wins:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),tiers:Array(8).fill(0)};
 }
@@ -196,12 +211,13 @@ async function runBacktest(){
    const back=backtestNumbers(previous,'back',2,method.backMode,seed^0x2468ace0,method.window);
    backtestAdd(method.acc,front,back,actual);
   });
-  randomAccs.forEach((acc,rep)=>{
+  for(let rep=0;rep<randomRuns;rep++){
    const seed=backtestHash((issueSeed^Math.imul(rep+1,0x45d9f3b))>>>0);
-   const front=backtestNumbers(previous,'front',5,'random',seed^0x13579bdf,60);
-   const back=backtestNumbers(previous,'back',2,'random',seed^0x2468ace0,60);
-   backtestAdd(acc,front,back,actual);
-  });
+   // Exact equivalent hit-count simulation: hypergeometric sampling avoids generating full tickets.
+   const frontHits=backtestRandomHits(seed^0x13579bdf,5,35,5);
+   const backHits=backtestRandomHits(seed^0x2468ace0,2,12,2);
+   backtestAddHits(randomAccs[rep],frontHits,backHits);
+  }
   if((i-(unique.length-n)+1)%25===0){
    output.textContent='正在回测：'+Math.min(i-(unique.length-n)+1,n)+' / '+n+' 期…';
    await new Promise(resolve=>setTimeout(resolve,0));
