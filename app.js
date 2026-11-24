@@ -135,7 +135,8 @@ function backtestNumbers(history,zone,count,method,seed){
   for(let i=ranked.length-1;i>0;i--){state=backtestHash(state);const j=state%(i+1);[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
  }else{
   const direction=method==='hybrid'?(zone==='front'?'hot':'cold'):method;
-  ranked.sort((a,b)=>(direction==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(a-b));
+  const tieBreak=n=>backtestHash(((seed>>>0)^(Math.imul(n,0x9e3779b1)))>>>0);
+  ranked.sort((a,b)=>(direction==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(tieBreak(a)-tieBreak(b))||(a-b));
  }
  return ranked.slice(0,count).sort((a,b)=>a-b);
 }
