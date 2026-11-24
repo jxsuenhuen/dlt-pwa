@@ -136,7 +136,8 @@ function backtestNumbers(history,zone,count,mode,seed,windowSize){
  const ranked=Array.from({length:max},(_,i)=>i+1);
  if(mode==='random'){
   let state=seed||1;
-  for(let i=ranked.length-1;i>0;i--){state=backtestHash(state);const j=state%(i+1);[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
+  // Partial Fisher–Yates: only select the required 5/2 balls, not shuffle the full pool.
+  for(let i=0;i<count;i++){state=backtestHash(state);const j=i+(state%(ranked.length-i));[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
  }else{
   const score=mode==='hot'?counts:mode==='cold'?counts:gaps;
   ranked.sort((a,b)=>{
