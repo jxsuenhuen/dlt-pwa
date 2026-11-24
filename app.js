@@ -163,12 +163,14 @@ function backtestQuantile(values,q){
  const sorted=[...values].sort((a,b)=>a-b),position=(sorted.length-1)*q,lo=Math.floor(position),hi=Math.ceil(position);
  return sorted[lo]+(sorted[hi]-sorted[lo])*(position-lo);
 }
-function runBacktest(){
- const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
+async function runBacktest(){
+ const output=$('#backtestResult'),runButton=$('#runBacktest'),period=Number($('#backtestPeriod').value);
+ if(runButton.dataset.running==='1')return;
+ runButton.dataset.running='1';runButton.disabled=true;output.textContent='正在准备回测…';
  const records=[...draws].filter(d=>/^\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
  const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
  const warmup=120,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
- if(n<1){output.textContent='当前识别到 '+unique.length+' 期有效记录；V2最多使用近120期作为计算窗口，至少需要121期才能回测。';return}
+ if(n<1){output.textContent='当前识别到 '+unique.length+' 期有效记录；V2最多使用近120期作为计算窗口，至少需要121期才能回测。';runButton.disabled=false;runButton.dataset.running='';return}
  const windows=[30,60,120],modes=[
   {key:'hot',label:'高频',front:'hot',back:'hot'},
   {key:'cold',label:'低频',front:'cold',back:'cold'},
@@ -193,6 +195,10 @@ function runBacktest(){
    const back=backtestNumbers(previous,'back',2,'random',seed^0x2468ace0,60);
    backtestAdd(acc,front,back,actual);
   });
+  if((i-(unique.length-n)+1)%25===0){
+   output.textContent='正在回测：'+Math.min(i-(unique.length-n)+1,n)+' / '+n+' 期…';
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
  }
  const tierNames=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'];
  const averageAcc=()=>{
@@ -226,6 +232,7 @@ function runBacktest(){
  const tableStyle='style="border-collapse:collapse;width:100%;min-width:760px;text-align:center"';
  const wrap=content=>'<div style="overflow-x:auto;margin:10px 0 18px"><table '+tableStyle+'>'+content+'</table></div>';
  output.innerHTML='<p>V2 已回测最近 <b>'+n+'</b> 期；每种策略每期生成1注，严格只使用当期之前的开奖数据。随机基准额外进行 <b>'+randomRuns+'</b> 轮蒙特卡洛模拟。</p><h4>总体表现（含不同滚动窗口）</h4>'+wrap(head+rows)+'<h4>前区命中分布（平均各档次数）</h4>'+wrap(distHead+distRows)+'<h4>后区命中分布（平均各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">随机基准前区平均命中 '+fmtRate(random.front)+'，95%模拟区间 '+randomFrontCI[0].toFixed(3)+'–'+randomFrontCI[1].toFixed(3)+'；后区平均命中 '+fmtRate(random.back)+'，95%模拟区间 '+randomBackCI[0].toFixed(3)+'–'+randomBackCI[1].toFixed(3)+'。窗口分别为近30、60、120期；遗漏优先按窗口内距上次出现的期数排序。模拟中奖期数仅按当前内置奖级规则统计，不计算奖金。历史频率、遗漏和回测结果均不能提高或证明未来中奖概率。</p>';
+ runButton.disabled=false;runButton.dataset.running='';
 }
 function choose(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);let x=1;for(let i=1;i<=k;i++)x=x*(n-k+i)/i;return Math.round(x)}
 function setupCalculator(){for(let n=5;n<=35;n++)$('#calcFront').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===5?'selected':''}>${n} 个</option>`);for(let n=2;n<=12;n++)$('#calcBack').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===2?'selected':''}>${n} 个</option>`);const calc=()=>{let lines=choose(+$(`#calcFront`).value,5)*choose(+$(`#calcBack`).value,2);let cost=lines*(2+($('#calcAddOn').checked?1:0));$('#calcLines').textContent=`${lines.toLocaleString('zh-CN')} 注`,$('#calcCost').textContent=`${cost.toLocaleString('zh-CN')} 元`};['calcFront','calcBack','calcAddOn'].forEach(id=>$('#'+id).addEventListener('change',calc));calc()}
