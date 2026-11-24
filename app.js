@@ -134,31 +134,43 @@ function backtestNumbers(history,zone,count,method,seed){
   let state=seed||1;
   for(let i=ranked.length-1;i>0;i--){state=backtestHash(state);const j=state%(i+1);[ranked[i],ranked[j]]=[ranked[j],ranked[i]]}
  }else{
-  ranked.sort((a,b)=>(method==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(a-b));
+  const direction=method==='hybrid'?(zone==='front'?'hot':'cold'):method;
+  ranked.sort((a,b)=>(direction==='hot'?counts[b]-counts[a]:counts[a]-counts[b])||(a-b));
  }
  return ranked.slice(0,count).sort((a,b)=>a-b);
 }
 function runBacktest(){
  const output=$('#backtestResult'),period=Number($('#backtestPeriod').value);
- const records=[...draws].filter(d=>/^\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
+ const records=[...draws].filter(d=>/^\\d{5}$/.test(d.issue)&&validRecord(d)).sort((a,b)=>a.issue.localeCompare(b.issue));
  const unique=[...new Map(records.map(d=>[d.issue,d])).values()];
  const warmup=60,available=Math.max(0,unique.length-warmup),n=Math.min(period,available);
  if(n<1){output.textContent=`当前识别到 ${unique.length} 期有效记录，至少需要61期才能回测。`;return}
- const methods=[['random','模拟随机'],['hot','近60期高频'],['cold','近60期低频']];
- const results=methods.map(([key,label])=>({key,label,zero:0,front:0,back:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0)}));
+ const methods=[['random','模拟随机'],['hot','近60期高频'],['cold','近60期低频'],['hybrid','前区高频＋后区低频']];
+ const tierNames=['一等奖','二等奖','三等奖','四等奖','五等奖','六等奖','七等奖','未中奖'];
+ const results=methods.map(([key,label])=>({key,label,zero:0,front:0,back:0,frontDist:Array(6).fill(0),backDist:Array(3).fill(0),totalDist:Array(8).fill(0),tiers:Object.fromEntries(tierNames.map(x=>[x,0]))}));
  for(let i=unique.length-n;i<unique.length;i++){
   const previous=unique.slice(0,i),actual=unique[i],seed=Number(actual.issue)||i;
   for(const result of results){
    const front=backtestNumbers(previous,'front',5,result.key,seed*31+7);
    const back=backtestNumbers(previous,'back',2,result.key,seed*37+11);
-   const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length;
-   result.front+=f;result.back+=b;result.frontDist[f]++;result.backDist[b]++;if(!f&&!b)result.zero++;
+   const f=front.filter(v=>actual.front.includes(v)).length,b=back.filter(v=>actual.back.includes(v)).length,total=f+b;
+   result.front+=f;result.back+=b;result.frontDist[f]++;result.backDist[b]++;result.totalDist[total]++;
+   if(!f&&!b)result.zero++;
+   result.tiers[prizeTier(f,b)]++;
   }
  }
- const th='<tr><th style="text-align:left;padding:8px">方法</th><th>前区平均命中</th><th>后区平均命中</th><th>全0期数</th></tr>';
- output.innerHTML='<p>已回测最近 '+n+' 期（每种方法每期1注；前置60期用于计算）。</p><div style="overflow-x:auto"><table style="width:100%;min-width:430px;border-collapse:collapse;text-align:center">'+th+results.map(r=>'<tr><td style="padding:9px;text-align:left;border-top:1px solid #e2e8f0">'+r.label+'</td><td style="border-top:1px solid #e2e8f0">'+(r.front/n).toFixed(3)+'</td><td style="border-top:1px solid #e2e8f0">'+(r.back/n).toFixed(3)+'</td><td style="border-top:1px solid #e2e8f0">'+r.zero+'/'+n+'</td></tr>').join('')+'</table></div><p style="font-size:13px;color:#64748b">理论随机期望：前区约0.714个/注、后区约0.333个/注。随机基准为确定性伪随机模拟，重新运行结果一致；不代表真实购买记录。</p>';
+ const th='<tr><th style="text-align:left">选号方法</th><th>前区均命中</th><th>后区均命中</th><th>全0期数</th><th>模拟中奖期数</th></tr>';
+ const mainRows=results.map(r=>{const wins=tierNames.slice(0,7).reduce((sum,t)=>sum+r.tiers[t],0);return '<tr><td>'+r.label+'</td><td>'+(r.front/n).toFixed(3)+'</td><td>'+(r.back/n).toFixed(3)+'</td><td>'+r.zero+'/'+n+'</td><td>'+wins+'/'+n+'</td></tr>'}).join('');
+ const distributionHead='<tr><th style="text-align:left">选号方法</th>'+[0,1,2,3,4,5].map(x=>'<th>前区命中'+x+'</th>').join('')+'</tr>';
+ const frontRows=results.map(r=>'<tr><td>'+r.label+'</td>'+r.frontDist.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
+ const backHead='<tr><th style="text-align:left">选号方法</th><th>后区命中0</th><th>后区命中1</th><th>后区命中2</th></tr>';
+ const backRows=results.map(r=>'<tr><td>'+r.label+'</td>'+r.backDist.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');
+ const tierHead='<tr><th style="text-align:left">选号方法</th>'+tierNames.slice(0,7).map(x=>'<th>'+x+'</th>').join('')+'</tr>';
+ const tierRows=results.map(r=>'<tr><td>'+r.label+'</td>'+tierNames.slice(0,7).map(x=>'<td>'+r.tiers[x]+'</td>').join('')+'</tr>').join('');
+ const style='style="border-collapse:collapse;width:100%;min-width:620px;text-align:center"';
+ const wrap=content=>'<div style="overflow-x:auto;margin:10px 0 18px"><table '+style+'>'+content+'</table></div>';
+ output.innerHTML='<p>已回测最近 <b>'+n+'</b> 期（每种方法每期1注；前置60期只用于计算号码频次）。</p><h4>总体表现</h4>'+wrap(th+mainRows)+'<h4>前区命中分布（各档次数）</h4>'+wrap(distributionHead+frontRows)+'<h4>后区命中分布（各档次数）</h4>'+wrap(backHead+backRows)+'<h4>按现有奖级规则模拟命中次数</h4>'+wrap(tierHead+tierRows)+'<p style="font-size:13px;color:#64748b">理论随机期望：前区约0.714个/注、后区约0.333个/注。高频/低频仅按每期开奖前最近60期统计；组合策略为前区高频、后区低频。奖级按工具当前内置规则计数，不计算奖金，模拟结果不代表未来预测能力或真实中奖概率。</p>';
 }
-
 function choose(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);let x=1;for(let i=1;i<=k;i++)x=x*(n-k+i)/i;return Math.round(x)}
 function setupCalculator(){for(let n=5;n<=35;n++)$('#calcFront').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===5?'selected':''}>${n} 个</option>`);for(let n=2;n<=12;n++)$('#calcBack').insertAdjacentHTML('beforeend',`<option value="${n}" ${n===2?'selected':''}>${n} 个</option>`);const calc=()=>{let lines=choose(+$(`#calcFront`).value,5)*choose(+$(`#calcBack`).value,2);let cost=lines*(2+($('#calcAddOn').checked?1:0));$('#calcLines').textContent=`${lines.toLocaleString('zh-CN')} 注`,$('#calcCost').textContent=`${cost.toLocaleString('zh-CN')} 元`};['calcFront','calcBack','calcAddOn'].forEach(id=>$('#'+id).addEventListener('change',calc));calc()}
 function prizeTier(f,b){if(f===5&&b===2)return'一等奖';if(f===5&&b===1)return'二等奖';if((f===5&&b===0)||(f===4&&b===2))return'三等奖';if(f===4&&b===1)return'四等奖';if((f===4&&b===0)||(f===3&&b===2))return'五等奖';if((f===3&&b===1)||(f===2&&b===2))return'六等奖';if((f===3&&b===0)||(f===2&&b===1)||(f===1&&b===2)||(f===0&&b===2))return'七等奖';return'未中奖'}
