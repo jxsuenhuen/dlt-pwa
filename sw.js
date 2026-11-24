@@ -1,4 +1,4 @@
-const CACHE = 'dlt-pwa-v12-backtest-v3-overdue-mc1000-20261124';
+const CACHE = 'dlt-pwa-v13-backtest-v4-phases-multipicks-20261124';
 const BASE = self.registration.scope;
 const SHELL = ['index.html', 'styles.css', 'app.js', 'manifest.json', 'icon.svg'];
 self.addEventListener('install', event => {
