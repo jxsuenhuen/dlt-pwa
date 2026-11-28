@@ -73,6 +73,8 @@ def main():
     parser.add_argument("--output", default="research/v4-baseline-report.json")
     parser.add_argument("--random-runs", type=int, default=RANDOM_RUNS)
     args = parser.parse_args()
+    if args.random_runs < 1:
+        parser.error("--random-runs must be at least 1")
 
     rows = json.loads(Path(args.input).read_text(encoding="utf-8"))
     # Issue number ordering is used only as chronology. No missing dates are inferred.
