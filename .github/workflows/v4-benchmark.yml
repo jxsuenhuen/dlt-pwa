@@ -1,0 +1,32 @@
+name: V4 walk-forward benchmark
+
+on:
+  pull_request:
+    paths:
+      - "history.json"
+      - "scripts/v4_walkforward.py"
+      - ".github/workflows/v4-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run V4 walk-forward benchmark
+        run: |
+          python scripts/v4_walkforward.py --input history.json --output research/v4-baseline-report.json --random-runs 300
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v4-baseline-report
+          path: research/v4-baseline-report.json
+          if-no-files-found: error

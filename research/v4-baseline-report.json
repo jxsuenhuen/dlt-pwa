@@ -1,0 +1,65 @@
+{
+  "model": "V4 pre-registered frequency-weighted baselines",
+  "generated_at": "2026-11-28T07:58:32Z",
+  "source": "history.json in repository at benchmark run",
+  "history_records": 2949,
+  "first_test_issue": "09058",
+  "last_test_issue": "26135",
+  "warmup_draws": 300,
+  "test_draws": 2649,
+  "windows": [
+    30,
+    60,
+    120,
+    300
+  ],
+  "strategies": {
+    "frequency_weighted_30": {
+      "front_mean_hits_per_line": 0.711589,
+      "back_mean_hits_per_line": 0.345036,
+      "zero_hit_draws": 787,
+      "zero_hit_rate": 0.297093,
+      "at_least_one_hit_draws": 1862,
+      "at_least_one_hit_rate": 0.702907
+    },
+    "frequency_weighted_60": {
+      "front_mean_hits_per_line": 0.728577,
+      "back_mean_hits_per_line": 0.344658,
+      "zero_hit_draws": 773,
+      "zero_hit_rate": 0.291808,
+      "at_least_one_hit_draws": 1876,
+      "at_least_one_hit_rate": 0.708192
+    },
+    "frequency_weighted_120": {
+      "front_mean_hits_per_line": 0.744809,
+      "back_mean_hits_per_line": 0.356738,
+      "zero_hit_draws": 742,
+      "zero_hit_rate": 0.280106,
+      "at_least_one_hit_draws": 1907,
+      "at_least_one_hit_rate": 0.719894
+    },
+    "frequency_weighted_300": {
+      "front_mean_hits_per_line": 0.718384,
+      "back_mean_hits_per_line": 0.340883,
+      "zero_hit_draws": 787,
+      "zero_hit_rate": 0.297093,
+      "at_least_one_hit_draws": 1862,
+      "at_least_one_hit_rate": 0.702907
+    }
+  },
+  "uniform_random_monte_carlo_runs": 300,
+  "uniform_random_mean": {
+    "front_mean_hits_per_line": 0.7151,
+    "back_mean_hits_per_line": 0.333082,
+    "zero_hit_rate": 0.298646,
+    "at_least_one_hit_rate": 0.701354
+  },
+  "interpretation": "在这次历史回测中，120期频率加权候选的平均命中和至少命中一个号码的期数高于随机均值，零命中比例略低；这只是探索性结果，尚未计算可靠的显著性区间，也未证明未来优势。不得据此宣称提高中奖概率或作为投注建议。",
+  "limitations": [
+    "2,926条旧记录缺少已核实日期和来源；本次按期号顺序作为临时顺序，未补造日期。",
+    "300轮随机蒙特卡洛给出均值，未在本报告中给出置信区间或经多重比较校正的检验。",
+    "窗口候选固定，但120期结果不能被当作未来最优模型；继续开发必须在未触碰的新数据上验证。",
+    "未来真实预测必须在开奖前留存时间戳和预测内容，开奖后不可修改。"
+  ],
+  "workflow_run": "https://github.com/jxsuenhuen/dlt-pwa/actions/runs/46123607439"
+}
