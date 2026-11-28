@@ -146,7 +146,7 @@ def main():
         ]
     }
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: report[k] for k in (
         "first_test_issue", "last_test_issue", "test_draws",
         "strategies", "uniform_random_mean"
