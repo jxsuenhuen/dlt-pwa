@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101c35"><title>V4 真实预测记录台</title>
+<style>
+:root{color-scheme:dark;--bg:#101c35;--panel:#182746;--line:#304365;--text:#eef3ff;--muted:#a9b8d2;--accent:#9bb8f5;--gold:#f0c987}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(150deg,#101c35,#172b4a);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;padding:22px}
+main{max-width:900px;margin:auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.tag{color:var(--gold);border:1px solid #786744;border-radius:30px;padding:4px 11px;font-size:12px}
+h1{font-size:clamp(25px,5vw,36px);margin:12px 0 4px}.sub,.muted{color:var(--muted)}.panel{background:#182746;border:1px solid var(--line);border-radius:18px;padding:20px;margin:18px 0;box-shadow:0 10px 30px #0002}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#101c35;color:var(--text);font:inherit}
+button{border:0;border-radius:10px;padding:12px 17px;background:var(--accent);color:#10203c;font-weight:700;cursor:pointer;margin:6px 6px 0 0}button.secondary{background:#304365;color:var(--text)}button:disabled{opacity:.45;cursor:not-allowed}
+.numbers{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.ball{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:#dce7ff;color:#152545;font-weight:800}.ball.back{background:#f4d9a7;color:#422e12}
+.notice{background:#253858;border-left:3px solid var(--gold);padding:12px;border-radius:8px;color:#e5eaf5}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#101c35;border-radius:12px;padding:13px}.stat strong{font-size:24px;display:block}.entry{border-top:1px solid var(--line);padding:14px 0}.entry:first-child{border-top:0}.small{font-size:12px;color:var(--muted)}.ok{color:#9ed6b3}.warn{color:var(--gold)}
+@media(max-width:520px){body{padding:14px}.panel{padding:15px}.stats{grid-template-columns:1fr 1fr}}
+</style></head>
+<body><main>
+<div class="top"><a href="../index.html" style="color:#b9ccf5">← 返回 V15 主页面</a><span class="tag">V4 研究工具 · 不影响 V15</span></div>
+<h1>真实预测记录台</h1><p class="sub">每期开奖前先封存预测，开奖后再核对。记录只保存在当前浏览器，建议定期导出备份；本机记录不是防篡改的第三方存证。</p>
+<div class="panel">
+<h2>① 生成并封存预测</h2>
+<div class="grid">
+<div><label for="issue">目标期号（必填）</label><input id="issue" inputmode="numeric" maxlength="5" placeholder="例如：26136"></div>
+<div><label for="drawDate">预计开奖日期（可选）</label><input id="drawDate" type="date"></div>
+<div><label for="window">模型版本</label><select id="window"><option value="120">V4 频率加权 · 近120期</option><option value="60">V4 频率加权 · 近60期</option><option value="30">V4 频率加权 · 近30期</option><option value="300">V4 频率加权 · 近300期</option></select></div>
+</div>
+<div class="notice" style="margin-top:14px">生成后会立即保存期号、生成时间、模型窗口和号码。相同期号不能重复生成或覆盖。请务必在开奖前完成并导出备份。</div>
+<button id="generate">生成并封存本期预测</button><p id="status" class="muted" role="status">正在准备历史数据…</p>
+<div id="preview" hidden><b>本期封存号码</b><div class="numbers" id="front"></div><div class="numbers" id="back"></div><p class="small" id="stamp"></p></div>
+</div>
+<div class="panel"><h2>② 开奖后核对</h2><div class="grid">
+<div><label for="verifyIssue">选择已封存期号</label><select id="verifyIssue"><option value="">暂无待核对记录</option></select></div>
+<div><label for="actualFront">真实前区（5个数字，空格或逗号分隔）</label><input id="actualFront" placeholder="例如：01 08 20 24 33"></div>
+<div><label for="actualBack">真实后区（2个数字）</label><input id="actualBack" placeholder="例如：03 04"></div>
+</div><button id="verify">保存开奖核对结果</button><p class="small">核对结果保存后不可在页面内修改；如录入错误，请保留原始备份并另行注明。本机存储可被用户或浏览器工具修改，因此不能视为不可篡改的第三方存证。</p></div>
+<div class="panel"><h2>③ 长期成绩</h2><div class="stats"><div class="stat"><span class="small">已封存预测</span><strong id="total">0</strong></div><div class="stat"><span class="small">已完成核对</span><strong id="checked">0</strong></div><div class="stat"><span class="small">前后区均零命中</span><strong id="zero">—</strong></div></div>
+<div id="records" style="margin-top:14px" class="muted">暂无记录</div>
+<button id="export">导出完整记录 JSON</button><button id="importBtn" class="secondary">导入备份 JSON</button><input id="file" type="file" accept="application/json,.json" hidden>
+</div>
+<p class="small">研究限制：频率加权是候选基线，不代表能预测随机开奖或提高中奖概率。此页面不自动获取或认证开奖结果；请用官方公布号码核对。浏览器清理数据、换设备或换浏览器可能导致本机记录丢失；localStorage 并非防篡改存证。</p>
+</main>
+<script>
+const KEY='dlt-v4-prediction-ledger-v1';
+let historyRows=[];
+const $=id=>document.getElementById(id);
+const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return []}};
+let ledger=read();
+const save=()=>localStorage.setItem(KEY,JSON.stringify(ledger));
+const pad=n=>String(n).padStart(2,'0');
+function random(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967296}
+function pickWeighted(counts,max,count){const pool=Array.from({length:max},(_,i)=>i+1),out=[];while(out.length<count){let total=pool.reduce((s,n)=>s+1+(counts[n]||0),0),r=random()*total,chosen=pool[pool.length-1];for(const n of pool){r-=1+(counts[n]||0);if(r<0){chosen=n;break}}out.push(chosen);pool.splice(pool.indexOf(chosen),1)}return out.sort((a,b)=>a-b)}
+function balls(id,nums,back=false){$(id).innerHTML=nums.map(n=>'<span class="ball '+(back?'back':'')+'">'+pad(n)+'</span>').join('')}
+function parseNums(s,count,max){const a=s.trim().split(/[\s,，、]+/).filter(Boolean).map(Number);if(a.length!==count||a.some(n=>!Number.isInteger(n)||n<1||n>max)||new Set(a).size!==count)throw Error('号码数量、范围或重复号码不正确');return a.sort((x,y)=>x-y)}
+function render(){const checked=ledger.filter(x=>x.actual);$('total').textContent=ledger.length;$('checked').textContent=checked.length;$('zero').textContent=checked.length?checked.filter(x=>x.frontHits===0&&x.backHits===0).length+' / '+checked.length:'—';$('verifyIssue').innerHTML='<option value="">选择期号</option>'+ledger.filter(x=>!x.actual).map(x=>'<option value="'+x.issue+'">'+x.issue+'（待核对）</option>').join('');$('records').innerHTML=ledger.length?[...ledger].reverse().map(x=>'<div class="entry"><b>第 '+x.issue+' 期</b> · '+x.window+'期窗口 · <span class="small">'+new Date(x.createdAt).toLocaleString()+'</span><div class="numbers">'+x.front.map(n=>'<span class="ball">'+pad(n)+'</span>').join('')+'<span style="width:10px"></span>'+x.back.map(n=>'<span class="ball back">'+pad(n)+'</span>').join('')+'</div>'+(x.actual?'<span class="ok">已核对：前区 '+x.frontHits+' 个，后区 '+x.backHits+' 个</span>':'<span class="warn">等待开奖核对</span>')+'</div>').join(''):'暂无记录';}
+async function init(){try{const r=await fetch('../history.json',{cache:'no-store'});if(!r.ok)throw Error('历史数据读取失败');historyRows=await r.json();$('status').textContent='历史数据已载入 '+historyRows.length+' 期。请确认目标期号后生成。'}catch(e){$('status').textContent='历史数据载入失败：'+e.message+'。请刷新页面重试。'}}
+$('generate').onclick=()=>{try{const issue=$('issue').value.trim(),window=Number($('window').value);if(!/^\d{5}$/.test(issue))throw Error('请输入5位目标期号');if(ledger.some(x=>x.issue===issue))throw Error('该期号已有封存记录，不能重复生成');const latestIssue=historyRows.map(x=>String(x.issue)).sort().at(-1);if(latestIssue&&issue<=latestIssue)throw Error('目标期号必须晚于当前历史数据最新期号（'+latestIssue+'），避免事后回测冒充开奖前预测');const prior=historyRows.filter(x=>String(x.issue)<issue).sort((a,b)=>String(a.issue).localeCompare(String(b.issue)));if(prior.length<window)throw Error('目标期号之前的历史数据不足'+window+'期');const recent=prior.slice(-window),fc=Array(36).fill(0),bc=Array(13).fill(0);recent.forEach(d=>{d.front.forEach(n=>fc[n]++);d.back.forEach(n=>bc[n]++)});const item={issue,drawDate:$('drawDate').value||null,window,model:'frequency_weighted',front:pickWeighted(fc,35,5),back:pickWeighted(bc,12,2),createdAt:new Date().toISOString(),historyThrough:recent[recent.length-1].issue,actual:null};ledger.push(item);save();balls('front',item.front);balls('back',item.back,true);$('stamp').textContent='已封存 '+new Date(item.createdAt).toLocaleString()+'；历史数据截至 '+item.historyThrough;$('preview').hidden=false;$('status').textContent='封存成功。请在开奖前保留本记录并导出备份。';render()}catch(e){$('status').textContent=e.message}};
+$('verify').onclick=()=>{try{const issue=$('verifyIssue').value,item=ledger.find(x=>x.issue===issue);if(!item||item.actual)throw Error('请选择尚未核对的封存期号');const front=parseNums($('actualFront').value,5,35),back=parseNums($('actualBack').value,2,12);item.actual={front,back,verifiedAt:new Date().toISOString()};item.frontHits=front.filter(n=>item.front.includes(n)).length;item.backHits=back.filter(n=>item.back.includes(n)).length;save();$('actualFront').value='';$('actualBack').value='';render();$('status').textContent='开奖核对已保存：前区命中 '+item.frontHits+' 个，后区命中 '+item.backHits+' 个。'}catch(e){$('status').textContent=e.message}};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify({format:'dlt-v4-ledger-v1',exportedAt:new Date().toISOString(),records:ledger},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='dlt-v4-prediction-ledger.json';a.click();URL.revokeObjectURL(url)};
+$('importBtn').onclick=()=>$('file').click();$('file').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),items=data.records;if(!Array.isArray(items))throw Error('备份格式不正确');const map=new Map(ledger.map(x=>[x.issue,x]));items.forEach(x=>{if(!/^\d{5}$/.test(x.issue)||!Array.isArray(x.front)||!Array.isArray(x.back))throw Error('备份含无效记录');if(!map.has(x.issue))map.set(x.issue,x)});ledger=[...map.values()].sort((a,b)=>a.issue.localeCompare(b.issue));save();render();$('status').textContent='备份导入完成；同一期号的已有记录未覆盖。'}catch(err){$('status').textContent=err.message}e.target.value=''};
+render();init();
+</script></body></html>
